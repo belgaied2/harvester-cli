@@ -1,12 +1,13 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path"
 
+	rcmd "github.com/rancher/cli/cmd"
 	"github.com/urfave/cli"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	VMv1 "kubevirt.io/client-go/api/v1"
 	"kubevirt.io/client-go/kubecli"
 )
 
@@ -26,9 +27,19 @@ const (
 	defaultNamespace     = "default"
 )
 
+type VirtualMachineData struct {
+	State          string
+	VirtualMachine VMv1.VirtualMachine
+	Name           string
+	Node           string
+	CPU            uint32
+	Memory         string
+	IPAddress      string
+}
+
 func VMCommand() cli.Command {
 	return cli.Command{
-		Name:    "vritualmachine",
+		Name:    "virtualmachine",
 		Aliases: []string{"vm"},
 		Usage:   "Manage Virtual Machines on Harvester",
 		Action:  defaultAction(vmLs),
@@ -59,6 +70,30 @@ func VMCommand() cli.Command {
 				ArgsUsage: "[VM_NAME]",
 				Flags:     []cli.Flag{},
 			},
+			{
+				Name:      "stop",
+				Usage:     "Stop a VM",
+				Action:    vmStop,
+				ArgsUsage: "[VM_NAME]",
+			},
+			{
+				Name:      "start",
+				Usage:     "Start a VM",
+				Action:    vmStart,
+				ArgsUsage: "[VM_NAME]",
+			},
+			{
+				Name:      "restart",
+				Usage:     "Restart a VM",
+				Action:    vmRestart,
+				ArgsUsage: "[VM_NAME]",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:  "vm-name, name",
+						Usage: "Name of the VM to restart",
+					},
+				},
+			},
 		},
 	}
 }
@@ -75,30 +110,10 @@ func defaultAction(fn func(ctx *cli.Context) error) func(ctx *cli.Context) error
 
 // GetHarvesterClient creates a Client for Harvester from Config input
 func getHarvesterClient() (kubecli.KubevirtClient, error) {
-	// kubecli.DefaultClientConfig() prepares config using kubeconfig.
-	// typically, you need to set env variable, KUBECONFIG=<path-to-kubeconfig>/.kubeconfig
+
 	p := path.Join(os.ExpandEnv("${HOME}/.harvester"), "config")
 
 	return kubecli.GetKubevirtClientFromFlags("", p)
-	// caCertBytes, errCA := base64.StdEncoding.DecodeString(d.CACertBase64)
-	// certBytes, errCert := base64.StdEncoding.DecodeString(d.CertBase64)
-	// keyBytes, errKey := base64.StdEncoding.DecodeString(d.KeyBase64)
-
-	// if errCA != nil || errCert != nil || errKey != nil {
-	// 	fmt.Println("An error happened during Base64 decoding of input certificate strings. The following error happened: %w", errCA)
-	// }
-	// clientConfig := restclient.Config{
-	// 	Host: d.HarvesterHost,
-	// 	TLSClientConfig: restclient.TLSClientConfig{
-	// 		ServerName: "harvester",
-	// 		CAData:     caCertBytes,
-	// 		CertData:   certBytes,
-	// 		KeyData:    keyBytes,
-	// 	},
-	// }
-
-	// get the kubevirt client, using which kubevirt resources can be managed.
-	// return kubecli.GetKubevirtClientFromRESTConfig(&clientConfig)
 
 }
 
@@ -112,12 +127,63 @@ func vmLs(ctx *cli.Context) error {
 
 	vmList, err := c.VirtualMachine("default").List(&v1.ListOptions{})
 
-	for _, vm := range vmList.Items {
-
-		fmt.Println(vm.Name)
+	if err != nil {
+		return err
 	}
 
-	return err
+	vmiList, err := c.VirtualMachineInstance("default").List(&v1.ListOptions{})
+
+	if err != nil {
+		return err
+	}
+
+	vmiMap := map[string]VMv1.VirtualMachineInstance{}
+	for _, vmi := range vmiList.Items {
+		vmiMap[vmi.Name] = vmi
+	}
+
+	writer := rcmd.NewTableWriter([][]string{
+		{"STATE", "State"},
+		{"NAME", "Name"},
+		{"NODE", "Node"},
+		{"CPU", "CPU"},
+		{"RAM", "Memory"},
+		{"IP Address", "IPAddress"},
+	},
+		ctx)
+
+	defer writer.Close()
+
+	for _, vm := range vmList.Items {
+
+		running := *vm.Spec.Running
+		var state string
+		if running {
+			state = "Running"
+		} else {
+			state = "Not Running"
+		}
+
+		var IP string
+		if vmiMap[vm.Name].Status.Interfaces == nil {
+			IP = ""
+		} else {
+			IP = vmiMap[vm.Name].Status.Interfaces[0].IP
+		}
+
+		writer.Write(&VirtualMachineData{
+			State:          state,
+			VirtualMachine: vm,
+			Name:           vm.Name,
+			Node:           vmiMap[vm.Name].Status.NodeName,
+			CPU:            vm.Spec.Template.Spec.Domain.CPU.Cores,
+			Memory:         vm.Spec.Template.Spec.Domain.Resources.Requests.Memory().String(),
+			IPAddress:      IP,
+		})
+
+	}
+
+	return writer.Err()
 }
 
 func vmDelete(ctx *cli.Context) {
@@ -126,4 +192,53 @@ func vmDelete(ctx *cli.Context) {
 
 func vmCreate(ctx *cli.Context) {
 
+}
+
+// Start issues a power on for the virtual machine instance.
+func vmStart(ctx *cli.Context) error {
+
+	c, err := getHarvesterClient()
+	if err != nil {
+		return err
+	}
+
+	vm, err := c.VirtualMachine("default").Get(ctx.Args().First(), &v1.GetOptions{})
+
+	*vm.Spec.Running = true
+
+	if err != nil {
+		return err
+	}
+
+	_, err = c.VirtualMachine("default").Update(vm)
+	return err
+}
+
+// Stop issues a power off for the virtual machine instance.
+func vmStop(ctx *cli.Context) error {
+
+	c, err := getHarvesterClient()
+	if err != nil {
+		return err
+	}
+
+	vm, err := c.VirtualMachine("default").Get(ctx.Args().First(), &v1.GetOptions{})
+	*vm.Spec.Running = false
+
+	if err != nil {
+		return err
+	}
+
+	_, err = c.VirtualMachine("default").Update(vm)
+	return err
+}
+
+// Restart reboots the virtual machine instance.
+func vmRestart(ctx *cli.Context) error {
+
+	err := vmStop(ctx)
+	if err != nil {
+		return err
+	}
+	return vmStart(ctx)
 }

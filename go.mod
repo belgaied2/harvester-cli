@@ -3,6 +3,7 @@ module github.com/belgaied2/harvester-cli
 go 1.16
 
 replace (
+	github.com/go-kit/kit => github.com/go-kit/kit v0.3.0
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20191219222812-2987a591a72c
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20210112165513-ebc401615f47
 	github.com/operator-framework/operator-registry => github.com/operator-framework/operator-registry v1.17.4
@@ -10,6 +11,7 @@ replace (
 	k8s.io/client-go => k8s.io/client-go v0.20.2
 	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.20.2
 	sigs.k8s.io/structured-merge-diff => sigs.k8s.io/structured-merge-diff v0.0.0-20190302045857-e85c7b244fd2
+
 )
 
 require (

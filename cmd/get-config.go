@@ -2,12 +2,24 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path"
 
 	"github.com/rancher/cli/cliclient"
 	rcmd "github.com/rancher/cli/cmd"
 	client "github.com/rancher/types/client/management/v3"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
+
+const (
+	kubeConfigFilename = "config"
+)
+
+type Conf struct {
+	Path    string
+	Content string
+}
 
 func GetConfigCommand() cli.Command {
 	return cli.Command{
@@ -15,13 +27,25 @@ func GetConfigCommand() cli.Command {
 		Aliases: []string{"c"},
 		Usage:   "Get KUBECONFIG of LOCAL cluster from Rancher",
 		Action:  getConfig,
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "path",
+				Usage: "Set the path where to store the KUBE config file",
+			},
+		},
 	}
 }
 
 func getConfig(ctx *cli.Context) error {
 
-	if ctx.NArg() == 0 {
-		return cli.ShowSubcommandHelp(ctx)
+	p := ctx.String("path")
+	if p == "" {
+		p = os.ExpandEnv("${HOME}/.harvester")
+	}
+
+	cf := Conf{
+		Path:    path.Join(p, kubeConfigFilename),
+		Content: "",
 	}
 
 	c, err := rcmd.GetClient(ctx)
@@ -29,7 +53,7 @@ func getConfig(ctx *cli.Context) error {
 		return err
 	}
 
-	resource, err := rcmd.Lookup(c, ctx.Args().First(), "cluster")
+	resource, err := rcmd.Lookup(c, "local", "cluster")
 	if err != nil {
 		return err
 	}
@@ -43,8 +67,9 @@ func getConfig(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(config.Config)
-	return nil
+
+	cf.Content = config.Config
+	return createKubeconfigFile(cf)
 }
 
 func getClusterByID(
@@ -57,4 +82,24 @@ func getClusterByID(
 			"`rancher clusters` to see available clusters: %s", clusterID, err)
 	}
 	return cluster, nil
+}
+
+func createKubeconfigFile(config Conf) error {
+	err := os.MkdirAll(path.Dir(config.Path), 0700)
+
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("Saving config to %s", config.Path)
+	p := config.Path
+
+	output, err := os.Create(p)
+	if err != nil {
+		return err
+	}
+
+	l, err := output.WriteString(config.Content)
+	logrus.Infof("Successfully written %d bytes to %s", l, config.Path)
+	return err
 }

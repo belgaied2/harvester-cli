@@ -49,6 +49,7 @@ func mainErr() error {
 
 		rcmd.LoginCommand(),
 		cmd.GetConfigCommand(),
+		cmd.VMCommand(),
 	}
 
 	for _, com := range app.Commands {

@@ -21,7 +21,7 @@ type Conf struct {
 	Content string
 }
 
-func GetConfigCommand() cli.Command {
+func ConfigCommand() cli.Command {
 	return cli.Command{
 		Name:    "get-config",
 		Aliases: []string{"c"},

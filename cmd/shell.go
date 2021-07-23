@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -129,24 +130,33 @@ func getShell(ctx *cli.Context) error {
 
 	// Handle control + C
 	cha := make(chan os.Signal, 1)
+
+	sshCtx, close := context.WithCancel(context.Background())
+
 	signal.Notify(cha, os.Interrupt)
+
+	// Go Routine waiting for OS Interrupts, and cancels the context if it gets one
 	go func() {
-		for {
-			<-cha
-			// fmt.Println("^C")
-			fmt.Fprint(in, "\n")
-			//fmt.Fprint(in, '\t')
-		}
+		<-cha
+		fmt.Printf("\nreceived interrupt, exiting")
+		close()
 	}()
 
-	//var b []byte = make([]byte, 1)
-
-	// Accepting commands
+	// Iterates on commands until context is cancelled from
 	for {
-		reader := bufio.NewReader(os.Stdin)
-		str, _ := reader.ReadString('\n')
-		fmt.Fprint(in, str)
+
+		select {
+		case <-sshCtx.Done():
+			return nil
+		default:
+			reader := bufio.NewReader(os.Stdin)
+			str, _ := reader.ReadString('\n')
+			fmt.Fprint(in, str)
+
+		}
+
 	}
+
 }
 
 func getSSHKeyFromFile(file string) (ssh.AuthMethod, error) {

@@ -25,12 +25,19 @@ func ConfigCommand() cli.Command {
 	return cli.Command{
 		Name:    "get-config",
 		Aliases: []string{"c"},
-		Usage:   "Get KUBECONFIG of LOCAL cluster from Rancher",
+		Usage:   "Get KUBECONFIG of Harvester cluster from Rancher",
 		Action:  getConfig,
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "path",
 				Usage: "Set the path where to store the KUBE config file",
+			},
+			cli.StringFlag{
+				Name:     "cluster",
+				Usage:    "Name of the cluster in Rancher for which the KUBECONFIG will be generated",
+				EnvVar:   "HARVESTER_CLUSTER_NAME",
+				Required: true,
+				Value:    "local",
 			},
 		},
 	}
@@ -53,7 +60,7 @@ func getConfig(ctx *cli.Context) error {
 		return err
 	}
 
-	resource, err := rcmd.Lookup(c, "local", "cluster")
+	resource, err := rcmd.Lookup(c, ctx.String("cluster"), "cluster")
 	if err != nil {
 		return err
 	}

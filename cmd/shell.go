@@ -16,6 +16,7 @@ import (
 )
 
 func ShellCommand() cli.Command {
+	userHome, _ := os.UserHomeDir()
 	return cli.Command{
 		Name:      "shell",
 		Aliases:   []string{"sh"},
@@ -39,7 +40,7 @@ func ShellCommand() cli.Command {
 				Name:   "ssh-key, i",
 				Usage:  "Path to SSH Private Key to be used for connecting to VM",
 				EnvVar: "HARVESTER_VM_SSH_KEY",
-				Value:  "~/.ssh/id_rsa",
+				Value:  userHome + "/.ssh/id_rsa",
 			},
 			cli.IntFlag{
 				Name:   "ssh-port",

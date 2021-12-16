@@ -18,18 +18,21 @@ import (
 )
 
 const (
-	vmAnnotationDescription = "field.cattle.io/description"
-	vmAnnotationNetworkIps  = "networks.harvesterhci.io/ips"
-	dvAnnotationImageID     = "harvesterhci.io/imageId"
-	dvSourceHTTPURLPrefix   = "http://minio.harvester-system:9000/vm-images/"
-	defaultSSHUser          = "ubuntu"
-	defaultVMName           = "test-vm"
-	defaultVMDescription    = "Test VM for Harvester"
-	defaultDiskSize         = "10Gi"
-	defaultMemSize          = "1Gi"
-	defaultNbCPUCores       = 1
-	defaultNamespace        = "default"
-	ubuntuDefaultImage      = "https://cloud-images.ubuntu.com/minimal/daily/focal/current/focal-minimal-cloudimg-amd64.img"
+	vmAnnotationDescription     = "field.cattle.io/description"
+	vmAnnotationNetworkIps      = "networks.harvesterhci.io/ips"
+	dvAnnotationImageID         = "harvesterhci.io/imageId"
+	dvSourceHTTPURLPrefix       = "http://minio.harvester-system:9000/vm-images/"
+	defaultSSHUser              = "ubuntu"
+	defaultVMName               = "test-vm"
+	defaultVMDescription        = "Test VM for Harvester"
+	defaultDiskSize             = "10Gi"
+	defaultMemSize              = "1Gi"
+	defaultNbCPUCores           = 1
+	defaultNamespace            = "default"
+	ubuntuDefaultImage          = "https://cloud-images.ubuntu.com/minimal/daily/focal/current/focal-minimal-cloudimg-amd64.img"
+	defaultCloudInitUserData    = "#cloud-config\npassword: password\nchpasswd: { expire: False}\nssh_pwauth: True\npackages:\n  - qemu-guest-agent\nruncmd:\n  - [ systemctl, daemon-reload ]\n  - [ systemctl, enable, qemu-guest-agent.service ]\n  - [ systemctl, start, --no-block, qemu-guest-agent.service ]"
+	defaultCloudInitNetworkData = "version: 2\nrenderer: networkd\nethernets:\n  enp1s0:\n    dhcp4: true\n  enp2s0:\n    dhcp4: true"
+	defaultCloudInitCmPrefix    = "default-ubuntu-"
 )
 
 var (
@@ -110,28 +113,40 @@ func VMCommand() cli.Command {
 						Value:  "",
 					},
 					cli.StringFlag{
-						Name:   "disk-size",
+						Name:   "disk-size, disk, d",
 						Usage:  "Size of the primary VM disk",
 						EnvVar: "HARVESTER_VM_DISKSIZE",
 						Value:  defaultDiskSize,
 					},
 					cli.StringFlag{
-						Name:   "ssh-keyname",
+						Name:   "ssh-keyname, i",
 						Usage:  "KeyName of the SSH Key to use with this VM",
 						EnvVar: "HARVESTER_VM_KEY",
 						Value:  "",
 					},
 					cli.IntFlag{
-						Name:   "cpus",
+						Name:   "cpus, c",
 						Usage:  "Number of CPUs to dedicate to the VM",
 						EnvVar: "HARVESTER_VM_CPUS",
 						Value:  defaultNbCPUCores,
 					},
 					cli.StringFlag{
-						Name:   "memory",
+						Name:   "memory, m",
 						Usage:  "Amount of memory in the format XXGi",
 						EnvVar: "HARVESTER_VM_MEMORY",
 						Value:  defaultMemSize,
+					},
+					cli.StringFlag{
+						Name:   "cloud-init-user-data, user-data",
+						Usage:  "Name of the Cloud Init User Data Template to be used",
+						EnvVar: "HARVESTER_USER_DATA",
+						Value:  "",
+					},
+					cli.StringFlag{
+						Name:   "cloud-init-network-data, network-data",
+						Usage:  "Name of the Cloud Init Network Data Template to be used",
+						EnvVar: "HARVESTER_NETWORK_DATA",
+						Value:  "",
 					},
 				},
 			},
@@ -271,7 +286,7 @@ func vmCreate(ctx *cli.Context) error {
 		}
 		logrus.Debug("Image ID %s given does exist!", ctx.String("vm-image-id"))
 	} else {
-		setDefaultVMImage(ctx)
+		setDefaultVMImage(c, ctx)
 	}
 
 	// Checking existing of the SSH KeyPair
@@ -283,7 +298,7 @@ func vmCreate(ctx *cli.Context) error {
 		}
 		logrus.Debug("Image ID %s given does exist!", ctx.String("ssh-keyname"))
 	} else {
-		setDefaultSSHKey(ctx)
+		setDefaultSSHKey(c, ctx)
 	}
 
 	sc := "longhorn-" + ctx.String("vm-image-id")
@@ -299,10 +314,10 @@ func vmCreate(ctx *cli.Context) error {
 	vmiLabels["harvesterhci.io/vmName"] = vmName
 	volumeMode := v1.PersistentVolumeBlock
 
-	cloudInitUserData, err := (*c.KubevirtClient).CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), "standard-ubuntu", k8smetav1.GetOptions{})
+	cloudInitUserData, err := getCloudInitData(c, ctx, "user")
 
 	if err != nil {
-		return fmt.Errorf("the cloud init template specified does not exist")
+		return err
 	}
 
 	sshKey, err := (*c.HarvesterClient).HarvesterhciV1beta1().KeyPairs(ctx.String("namespace")).Get(context.TODO(), ctx.String("ssh-keyname"), k8smetav1.GetOptions{})
@@ -313,10 +328,10 @@ func vmCreate(ctx *cli.Context) error {
 
 	cloudInitSSHSection := "\nssh_authorized_keys:\n  - " + sshKey.Spec.PublicKey + "\n"
 
-	cloudInitNetworkData, err := (*c.KubevirtClient).CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), "ubuntu-std-network", k8smetav1.GetOptions{})
+	cloudInitNetworkData, err := getCloudInitData(c, ctx, "network")
 
 	if err != nil {
-		return fmt.Errorf("the cloud init template specified does not exist")
+		return err
 	}
 	logrus.Debug("CloudInit: ")
 
@@ -518,6 +533,7 @@ func vmRestart(ctx *cli.Context) error {
 	return vmStart(ctx)
 }
 
+// vmiAnnotations generates a map of strings to be injected as annotations from a PVC name and an SSK Keyname
 func vmiAnnotations(pvcName string, sshKeyName string) map[string]string {
 	return map[string]string{
 		"harvesterhci.io/diskNames": "[\"" + pvcName + "\"]",
@@ -525,12 +541,8 @@ func vmiAnnotations(pvcName string, sshKeyName string) map[string]string {
 	}
 }
 
-func setDefaultVMImage(ctx *cli.Context) error {
-	c, err := GetHarvesterClient()
-
-	if err != nil {
-		return err
-	}
+// setDefaultVMImage creates a default VM image based on Ubuntu if none has been provided at the command line.
+func setDefaultVMImage(c Client, ctx *cli.Context) error {
 
 	vmImages, err := (*c.HarvesterClient).HarvesterhciV1beta1().VirtualMachineImages("default").List(context.TODO(), k8smetav1.ListOptions{})
 
@@ -541,7 +553,7 @@ func setDefaultVMImage(ctx *cli.Context) error {
 	var vmImage *v1beta1.VirtualMachineImage
 
 	if len(vmImages.Items) == 0 {
-		vmImage, err = CreateVMImage("ubuntu-default-image", ubuntuDefaultImage)
+		vmImage, err = CreateVMImage(c, "ubuntu-default-image", ubuntuDefaultImage)
 		if err != nil {
 			return fmt.Errorf("impossible to create a default VM Image")
 		}
@@ -555,12 +567,8 @@ func setDefaultVMImage(ctx *cli.Context) error {
 	return nil
 }
 
-func setDefaultSSHKey(ctx *cli.Context) error {
-	c, err := GetHarvesterClient()
-
-	if err != nil {
-		return err
-	}
+// setDefaultSSHKey assign a default SSH key to the VM if none was provided at the command line
+func setDefaultSSHKey(c Client, ctx *cli.Context) error {
 
 	sshKeys, err := (*c.HarvesterClient).HarvesterhciV1beta1().KeyPairs("default").List(context.TODO(), k8smetav1.ListOptions{})
 
@@ -579,12 +587,97 @@ func setDefaultSSHKey(ctx *cli.Context) error {
 	return nil
 }
 
-func CreateVMImage(imageName string, url string) (*v1beta1.VirtualMachineImage, error) {
-	c, err := GetHarvesterClient()
+// getCloudInitNetworkData gives the ConfigMap object with name indicated in the command line,
+// and will create a new one called "ubuntu-std-network" if none is provided or no ConfigMap was found with the same name
+// func getCloudInitNetworkData(c Client, ctx *cli.Context) (*v1.ConfigMap, error) {
+
+// 	var cmName string
+// 	if ctx.String("cloud-init-work-data") == "" {
+// 		cmName = "ubuntu-std-network-data"
+// 	} else {
+// 		cmName = ctx.String("cloud-init-work-data")
+// 	}
+// 	var ciNetData *v1.ConfigMap
+// 	var err error
+// 	ciNetData, err = (*c.KubevirtClient).CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
+
+// 	if err != nil && cmName == ctx.String("cloud-init-work-data") {
+// 		return nil, fmt.Errorf("cloud-init-network-data config map was not found, please specifiy another configmap or remove the cloud-init-network-data flag to use the default one for ubuntu")
+// 	}
+
+// 	if err != nil {
+// 		var err1 error
+// 		ciNetData, err1 = (*c.KubevirtClient).CoreV1().ConfigMaps(ctx.String("namespace")).Create(context.TODO(), &v1.ConfigMap{
+// 			ObjectMeta: k8smetav1.ObjectMeta{
+// 				Name: cmName,
+// 			},
+// 			Data: map[string]string{
+// 				"cloudInit": defaultCloudInitNetworkData,
+// 			},
+// 		}, k8smetav1.CreateOptions{})
+
+// 		if err1 != nil {
+// 			fmt.Println("Problem here: " + err1.Error())
+// 			return nil, fmt.Errorf("error during creation of default cloud-init template")
+// 		}
+// 	}
+
+// 	return ciNetData, nil
+// }
+
+// getCloudInitNetworkData gives the ConfigMap object with name indicated in the command line,
+// and will create a new one called "ubuntu-std-network" if none is provided or no ConfigMap was found with the same name
+func getCloudInitData(c Client, ctx *cli.Context, scope string) (*v1.ConfigMap, error) {
+	var cmName string
+
+	if scope != "user" && scope != "network" {
+		return nil, fmt.Errorf("wrong value for scope parameter")
+	}
+
+	flagName := "cloud-init-" + scope + "-data"
+
+	if ctx.String(flagName) == "" {
+		cmName = defaultCloudInitCmPrefix + scope + "-data"
+	} else {
+		cmName = ctx.String(flagName)
+	}
+	var ciData *v1.ConfigMap
+	var err error
+	ciData, err = (*c.KubevirtClient).CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
+
+	if err != nil && cmName == ctx.String(flagName) {
+		return nil, fmt.Errorf("%[1]v config map was not found, please specifiy another configmap or remove the %[1]v flag to use the default one for ubuntu", cmName)
+	}
+
+	var cloudInitContent string
+	if scope == "user" {
+		cloudInitContent = defaultCloudInitUserData
+	} else if scope == "network" {
+		cloudInitContent = defaultCloudInitNetworkData
+	}
 
 	if err != nil {
-		return &v1beta1.VirtualMachineImage{}, err
+		var err1 error
+		ciData, err1 = (*c.KubevirtClient).CoreV1().ConfigMaps(ctx.String("namespace")).Create(context.TODO(), &v1.ConfigMap{
+			ObjectMeta: k8smetav1.ObjectMeta{
+				Name: cmName,
+			},
+			Data: map[string]string{
+				"cloudInit": cloudInitContent,
+			},
+		}, k8smetav1.CreateOptions{})
+
+		if err1 != nil {
+			fmt.Println("Error Creating CM: " + err1.Error())
+			return nil, fmt.Errorf("error during creation of default cloud-init template")
+		}
 	}
+
+	return ciData, nil
+}
+
+// CreateVMImage will create a VM Image on Harvester given an image name and an image URL
+func CreateVMImage(c Client, imageName string, url string) (*v1beta1.VirtualMachineImage, error) {
 
 	vmImage, err := (*c.HarvesterClient).HarvesterhciV1beta1().VirtualMachineImages("default").Create(
 		context.TODO(),

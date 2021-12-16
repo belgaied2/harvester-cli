@@ -44,6 +44,7 @@ var (
 	}
 )
 
+// VirtualMachineData type is a Data Structure that holds information to display for VM
 type VirtualMachineData struct {
 	State          string
 	VirtualMachine VMv1.VirtualMachine
@@ -54,11 +55,14 @@ type VirtualMachineData struct {
 	IPAddress      string
 }
 
+// Client type holds the HarvesterClient and KubevirtClient objects which make it possible
+// to control Harvester's resources on Kubernetes
 type Client struct {
 	HarvesterClient *harvclient.Clientset
 	KubevirtClient  *kubecli.KubevirtClient
 }
 
+// VMCommand defines the CLI command that manages VMs
 func VMCommand() cli.Command {
 	return cli.Command{
 		Name:    "virtualmachine",
@@ -190,7 +194,7 @@ func defaultAction(fn func(ctx *cli.Context) error) func(ctx *cli.Context) error
 
 func vmLs(ctx *cli.Context) error {
 
-	c, err := GetHarvesterClient()
+	c, err := GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -258,7 +262,7 @@ func vmLs(ctx *cli.Context) error {
 }
 
 func vmDelete(ctx *cli.Context) error {
-	c, err := GetHarvesterClient()
+	c, err := GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -271,7 +275,7 @@ func vmDelete(ctx *cli.Context) error {
 
 func vmCreate(ctx *cli.Context) error {
 
-	c, err := GetHarvesterClient()
+	c, err := GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -487,7 +491,7 @@ func vmCreate(ctx *cli.Context) error {
 // vmStart issues a power on for the virtual machine instance.
 func vmStart(ctx *cli.Context) error {
 
-	c, err := GetHarvesterClient()
+	c, err := GetHarvesterClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -507,7 +511,7 @@ func vmStart(ctx *cli.Context) error {
 // Stop issues a power off for the virtual machine instance.
 func vmStop(ctx *cli.Context) error {
 
-	c, err := GetHarvesterClient()
+	c, err := GetHarvesterClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -579,51 +583,12 @@ func setDefaultSSHKey(c Client, ctx *cli.Context) error {
 	if len(sshKeys.Items) == 0 {
 
 		return fmt.Errorf("no ssh keys exists in harvester, please add a new ssh key")
-	} else {
-		sshKey := &sshKeys.Items[0]
-		ctx.Set("ssh-keyname", sshKey.Name)
 	}
+	sshKey := &sshKeys.Items[0]
+	ctx.Set("ssh-keyname", sshKey.Name)
 
 	return nil
 }
-
-// getCloudInitNetworkData gives the ConfigMap object with name indicated in the command line,
-// and will create a new one called "ubuntu-std-network" if none is provided or no ConfigMap was found with the same name
-// func getCloudInitNetworkData(c Client, ctx *cli.Context) (*v1.ConfigMap, error) {
-
-// 	var cmName string
-// 	if ctx.String("cloud-init-work-data") == "" {
-// 		cmName = "ubuntu-std-network-data"
-// 	} else {
-// 		cmName = ctx.String("cloud-init-work-data")
-// 	}
-// 	var ciNetData *v1.ConfigMap
-// 	var err error
-// 	ciNetData, err = (*c.KubevirtClient).CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
-
-// 	if err != nil && cmName == ctx.String("cloud-init-work-data") {
-// 		return nil, fmt.Errorf("cloud-init-network-data config map was not found, please specifiy another configmap or remove the cloud-init-network-data flag to use the default one for ubuntu")
-// 	}
-
-// 	if err != nil {
-// 		var err1 error
-// 		ciNetData, err1 = (*c.KubevirtClient).CoreV1().ConfigMaps(ctx.String("namespace")).Create(context.TODO(), &v1.ConfigMap{
-// 			ObjectMeta: k8smetav1.ObjectMeta{
-// 				Name: cmName,
-// 			},
-// 			Data: map[string]string{
-// 				"cloudInit": defaultCloudInitNetworkData,
-// 			},
-// 		}, k8smetav1.CreateOptions{})
-
-// 		if err1 != nil {
-// 			fmt.Println("Problem here: " + err1.Error())
-// 			return nil, fmt.Errorf("error during creation of default cloud-init template")
-// 		}
-// 	}
-
-// 	return ciNetData, nil
-// }
 
 // getCloudInitNetworkData gives the ConfigMap object with name indicated in the command line,
 // and will create a new one called "ubuntu-std-network" if none is provided or no ConfigMap was found with the same name

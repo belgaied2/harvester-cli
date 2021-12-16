@@ -15,6 +15,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ShellCommand defines the CLI command that makes it possible to ssh into a VM
 func ShellCommand() cli.Command {
 	userHome, _ := os.UserHomeDir()
 	return cli.Command{
@@ -58,7 +59,7 @@ func getShell(ctx *cli.Context) error {
 	}
 
 	vmName := ctx.Args().First()
-	c, err := GetHarvesterClient()
+	c, err := GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err

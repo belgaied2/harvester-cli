@@ -39,10 +39,10 @@ func mainErr() error {
 			Usage: "Debug logging",
 		},
 		cli.StringFlag{
-			Name:   "config, c",
-			Usage:  "Path to rancher config",
-			EnvVar: "RANCHER_CONFIG_DIR",
-			Value:  os.ExpandEnv("${HOME}/.rancher"),
+			Name:   "config, conf",
+			Usage:  "Path to Harvester's config file",
+			EnvVar: "HARVESTER_CONFIG",
+			Value:  os.ExpandEnv("${HOME}/.harvester/config"),
 		},
 	}
 	app.Commands = []cli.Command{

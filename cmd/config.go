@@ -16,11 +16,13 @@ const (
 	kubeConfigFilename = "config"
 )
 
+// Conf is an Object that contains the configuration path and the configuration's file content as a string
 type Conf struct {
 	Path    string
 	Content string
 }
 
+// ConfigCommand defines a CLI command to set up the Harvester Configuration files
 func ConfigCommand() cli.Command {
 	return cli.Command{
 		Name:    "get-config",

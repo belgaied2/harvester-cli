@@ -3,19 +3,20 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path"
 
 	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
+	"github.com/urfave/cli"
 	regen "github.com/zach-klippenstein/goregen"
 	"kubevirt.io/client-go/kubecli"
 )
 
+//NewTrue returns a pointer to true
 func NewTrue() *bool {
 	b := true
 	return &b
 }
 
-// randomID returns a random string used as an ID internally in Harvester.
+// RandomID returns a random string used as an ID internally in Harvester.
 func RandomID() string {
 	res, err := regen.Generate("[a-z]{3}[0-9][a-z]")
 	if err != nil {
@@ -26,9 +27,8 @@ func RandomID() string {
 }
 
 // GetHarvesterClient creates a Client for Harvester from Config input
-func GetHarvesterClient() (Client, error) {
-
-	p := path.Join(os.ExpandEnv("${HOME}/.harvester"), "config")
+func GetHarvesterClient(ctx *cli.Context) (Client, error) {
+	p := os.ExpandEnv(ctx.GlobalString("config"))
 	kubevirtClient, err := kubecli.GetKubevirtClientFromFlags("", p)
 
 	if err != nil {

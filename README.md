@@ -1,6 +1,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/belgaied2/harvester-cli)](https://goreportcard.com/report/github.com/belgaied2/harvester-cli)
 
-# CLI Tool for [Harvest HCI](https://harvesterhci.io)
+# CLI Tool for [Harvester HCI](https://harvesterhci.io)
 This repository aims at providing a CLI tool to easily create VMs on Harvester, using simplicity principals similar to [multipass](https://multipass.run/) or [k3d](https://k3d.io).
 
 # Usage

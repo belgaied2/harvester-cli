@@ -1,3 +1,5 @@
+name: Multi-Arch release
+
 on: 
   release:
     types: [created]

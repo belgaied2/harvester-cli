@@ -1,4 +1,5 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/belgaied2/harvester-cli)](https://goreportcard.com/report/github.com/belgaied2/harvester-cli)
+[![Lint Go Code](https://github.com/belgaied2/harvester-cli/actions/workflows/lint.yml/badge.svg)](https://github.com/belgaied2/harvester-cli/actions/workflows/lint.yml)
 
 # CLI Tool for [Harvester HCI](https://harvesterhci.io)
 This repository aims at providing a CLI tool to easily create VMs on Harvester, using simplicity principals similar to [multipass](https://multipass.run/) or [k3d](https://k3d.io).

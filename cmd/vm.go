@@ -14,6 +14,7 @@ import (
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	VMv1 "kubevirt.io/client-go/api/v1"
 	"kubevirt.io/client-go/kubecli"
+	"kubevirt.io/client-go/log"
 	"kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 )
 
@@ -21,10 +22,6 @@ const (
 	vmAnnotationDescription     = "field.cattle.io/description"
 	vmAnnotationNetworkIps      = "networks.harvesterhci.io/ips"
 	dvAnnotationImageID         = "harvesterhci.io/imageId"
-	dvSourceHTTPURLPrefix       = "http://minio.harvester-system:9000/vm-images/"
-	defaultSSHUser              = "ubuntu"
-	defaultVMName               = "test-vm"
-	defaultVMDescription        = "Test VM for Harvester"
 	defaultDiskSize             = "10Gi"
 	defaultMemSize              = "1Gi"
 	defaultNbCPUCores           = 1
@@ -40,7 +37,7 @@ var (
 		Name:   "namespace, n",
 		Usage:  "Namespace of the VM",
 		EnvVar: "HARVESTER_VM_NAMESPACE",
-		Value:  "default",
+		Value:  defaultNamespace,
 	}
 )
 
@@ -185,7 +182,10 @@ func VMCommand() cli.Command {
 func defaultAction(fn func(ctx *cli.Context) error) func(ctx *cli.Context) error {
 	return func(ctx *cli.Context) error {
 		if ctx.Bool("help") {
-			cli.ShowAppHelp(ctx)
+			err := cli.ShowAppHelp(ctx)
+			if err != nil {
+				log.Log.Info("Issue encountered during executing help command")
+			}
 			return nil
 		}
 		return fn(ctx)
@@ -288,9 +288,12 @@ func vmCreate(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		logrus.Debug("Image ID %s given does exist!", ctx.String("vm-image-id"))
+		logrus.Debug("Image ID %s given does exist!", ctx.String("vm-image-id")) // nolint: vet
 	} else {
-		setDefaultVMImage(c, ctx)
+		err = setDefaultVMImage(c, ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Checking existing of the SSH KeyPair
@@ -300,9 +303,12 @@ func vmCreate(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		logrus.Debug("Image ID %s given does exist!", ctx.String("ssh-keyname"))
+		logrus.Debug("Image ID %s given does exist!", ctx.String("ssh-keyname")) //nolint: vet
 	} else {
-		setDefaultSSHKey(c, ctx)
+		err = setDefaultSSHKey(c, ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	sc := "longhorn-" + ctx.String("vm-image-id")
@@ -566,7 +572,11 @@ func setDefaultVMImage(c Client, ctx *cli.Context) error {
 	}
 
 	imageID := vmImage.ObjectMeta.Name
-	ctx.Set("vm-image-id", imageID)
+	err = ctx.Set("vm-image-id", imageID)
+
+	if err != nil {
+		logrus.Warn("Error encountered during the storage of the imageID value: %s", imageID) // nolint: vet
+	}
 
 	return nil
 }
@@ -585,7 +595,11 @@ func setDefaultSSHKey(c Client, ctx *cli.Context) error {
 		return fmt.Errorf("no ssh keys exists in harvester, please add a new ssh key")
 	}
 	sshKey := &sshKeys.Items[0]
-	ctx.Set("ssh-keyname", sshKey.Name)
+	err = ctx.Set("ssh-keyname", sshKey.Name)
+
+	if err != nil {
+		logrus.Warn("Error encountered during the storage of the SSH Keyname value: %s", sshKey.Name) // nolint: vet
+	}
 
 	return nil
 }

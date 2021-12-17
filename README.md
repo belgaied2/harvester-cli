@@ -8,7 +8,7 @@ This repository aims at providing a CLI tool to easily create VMs on Harvester, 
 Harvester CLI is a command line tool that can manage some aspects of Virtual Machine management on a remote Harvester Cluster. The number of features implemented at the moment are still limited, but most of the handling of VMs themselves are already done.
 
 Please be aware that Harvester CLI offers an opinionated approach to creating VMs, it is supposed to be a way to easily create and destroy test VMs for the purpose of conducting tests.
-For instance, if no VM image is provided to the `harvester vm create` command, Harvester will go ahead and use the first image it finds in Harvester. If Harvester has no image, it will go ahead and download Ubuntu Focal `20.04` in its minimal version.
+For instance, if no VM image is provided to the `harvester vm create` command, `harvester` CLI will go ahead and use the first image it finds in Harvester. If Harvester has no image, it will go ahead and download Ubuntu Focal `20.04` in its minimal version.
 
 Similarly, if no Cloud-Init template is provided, it will go ahead and create a standard Cloud-Init template for Ubuntu.
 
@@ -20,7 +20,7 @@ At the moment, features implemented in Harvester CLI are:
 - VM Lifecycle Management: List, Create, Delete, Start, Stop, Restart
 - Direct Shell access to VMs
 
-Many aspects might be implemented in the future, like Network Management or VM Image Management, please feel free to contribute.
+Many aspects might be implemented in the future, like Network Management or VM Image Management, please feel free to contribute or suggest features by creating issues.
 
 ## VM Management
 

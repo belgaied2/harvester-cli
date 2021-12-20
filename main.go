@@ -21,6 +21,12 @@ func main() {
 
 func mainErr() error {
 
+	userHome, err := os.UserHomeDir()
+
+	if err != nil {
+		logrus.Warn("Not able to determine home folder of current user!")
+	}
+
 	app := cli.NewApp()
 	app.Name = "harvester"
 	app.Usage = "Harvester CLI to easily manage infrastructure"
@@ -42,7 +48,7 @@ func mainErr() error {
 			Name:   "config, conf",
 			Usage:  "Path to Harvester's config file",
 			EnvVar: "HARVESTER_CONFIG",
-			Value:  os.ExpandEnv("${HOME}/.harvester/config"),
+			Value:  userHome + "/.harvester/config",
 		},
 	}
 	app.Commands = []cli.Command{

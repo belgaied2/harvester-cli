@@ -47,9 +47,14 @@ func ConfigCommand() cli.Command {
 
 func getConfig(ctx *cli.Context) error {
 
+	userHome, err := os.UserHomeDir()
+
+	if err != nil {
+		return err
+	}
 	p := ctx.String("path")
 	if p == "" {
-		p = os.ExpandEnv("${HOME}/.harvester")
+		p = userHome + "/.harvester"
 	}
 
 	cf := Conf{

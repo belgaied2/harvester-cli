@@ -94,7 +94,7 @@ DESCRIPTION:
 List all VMs in the current Harvester Cluster
 
 OPTIONS:
-   --namespace value, -n value  Namespace of the VM (default: "default") [%HARVESTER_VM_NAMESPACE%]
+   --namespace value, -n value  Namespace of the VM (default: "default") [$HARVESTER_VM_NAMESPACE]
 
 
 ```
@@ -120,15 +120,15 @@ USAGE:
    harvester vm create [command options] [VM_NAME]
 
 OPTIONS:
-   --namespace value, -n value      Namespace of the VM (default: "default") [%HARVESTER_VM_NAMESPACE%]
-   --vm-description value           Optional description of your VM [%HARVESTER_VM_DESCRIPTION%]
-   --vm-image-id value              Harvester Image ID of the VM to create [%HARVESTER_VM_IMAGE_ID%]
-   --disk-size value                Size of the primary VM disk (default: "10Gi") [%HARVESTER_VM_DISKSIZE%]
-   --ssh-keyname value              KeyName of the SSH Key to use with this VM [%HARVESTER_VM_KEY%]
-   --cpus value                     Number of CPUs to dedicate to the VM (default: 1) [%HARVESTER_VM_CPUS%]
-   --memory value                   Amount of memory in the format XXGi (default: "1Gi") [%HARVESTER_VM_MEMORY%]
-   --cloud-init-user-data value     Cloud Init User Data in yaml format [%HARVESTER_USER_DATA%]
-   --cloud-init-network-data value  Cloud Init Network Data in yaml format [%HARVESTER_NETWORK_DATA%]
+   --namespace value, -n value      Namespace of the VM (default: "default") [HARVESTER_VM_NAMESPACE]
+   --vm-description value           Optional description of your VM [HARVESTER_VM_DESCRIPTION]
+   --vm-image-id value              Harvester Image ID of the VM to create [HARVESTER_VM_IMAGE_ID]
+   --disk-size value                Size of the primary VM disk (default: "10Gi") [HARVESTER_VM_DISKSIZE]
+   --ssh-keyname value              KeyName of the SSH Key to use with this VM [HARVESTER_VM_KEY]
+   --cpus value                     Number of CPUs to dedicate to the VM (default: 1) [HARVESTER_VM_CPUS]
+   --memory value                   Amount of memory in the format XXGi (default: "1Gi") [HARVESTER_VM_MEMORY]
+   --cloud-init-user-data value     Cloud Init User Data in yaml format [HARVESTER_USER_DATA]
+   --cloud-init-network-data value  Cloud Init Network Data in yaml format [HARVESTER_NETWORK_DATA]
 
 
 ```
@@ -148,7 +148,7 @@ USAGE:
    harvester vm delete [command options] [VM_NAME/VM_ID]
 
 OPTIONS:
-   --namespace value, -n value  Namespace of the VM (default: "default") [%HARVESTER_VM_NAMESPACE%]
+   --namespace value, -n value  Namespace of the VM (default: "default") [HARVESTER_VM_NAMESPACE]
 
 
 ```

@@ -106,6 +106,8 @@ The `create` sub-command creates a VM based on some input preferences, the most 
 - `disk-size` flag: Disk size using the same notation as above
 - `vm-image-id` flag: references the VM image (should be a Cloud Image type of image) that already exists on Harvester. *NOTE: At this time, it is necessary to give the VM ID and not the image name. The ID can be found in the Harvester UI in the YAML description of the VM Image*
 
+**!!IMPORTANT NOTE: At the moment, the `create` sub-command supposes a Network `vlan1` already exists!!** 
+
 > Create a VM
 >
 > name: harvester vm create

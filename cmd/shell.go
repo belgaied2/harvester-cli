@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/signal"
 
 	"github.com/shiena/ansicolor"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"golang.org/x/crypto/ssh"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -122,12 +122,12 @@ func getShell(ctx *cli.Context) error {
 	if err := session.RequestPty("xterm-256color", 80, 40, modes); err != nil {
 		//if err := session.RequestPty("vt100", 80, 40, modes); err != nil {
 		//if err := session.RequestPty("vt220", 80, 40, modes); err != nil {
-		log.Fatalf("request for pseudo terminal failed: %s", err)
+		logrus.Fatalf("request for pseudo terminal failed: %s", err)
 	}
 
 	// Start remote shell
 	if err := session.Shell(); err != nil {
-		log.Fatalf("failed to start shell: %s", err)
+		logrus.Fatalf("failed to start shell: %s", err)
 	}
 
 	// Handle control + C

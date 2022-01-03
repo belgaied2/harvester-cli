@@ -2,16 +2,20 @@ package main
 
 import (
 	"os"
+	"path"
 	"regexp"
 	"strings"
 
 	"github.com/belgaied2/harvester-cli/cmd"
 	"github.com/pkg/errors"
-	rcmd "github.com/rancher/cli/cmd"
 	rancherprompt "github.com/rancher/cli/rancher_prompt"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
+
+func init() {
+	logrus.SetLevel(logrus.InfoLevel)
+}
 
 func main() {
 	if err := mainErr(); err != nil {
@@ -45,15 +49,21 @@ func mainErr() error {
 			Usage: "Debug logging",
 		},
 		cli.StringFlag{
-			Name:   "config, conf",
+			Name:   "harvester-config, hconf",
 			Usage:  "Path to Harvester's config file",
 			EnvVar: "HARVESTER_CONFIG",
-			Value:  userHome + "/.harvester/config",
+			Value:  path.Join(userHome, ".harvester", "config"),
+		},
+		cli.StringFlag{
+			Name:   "config, rconf",
+			Usage:  "Path to Rancher's config file",
+			EnvVar: "RANCHER_CONFIG",
+			Value:  path.Join(userHome, ".rancher"),
 		},
 	}
 	app.Commands = []cli.Command{
 
-		rcmd.LoginCommand(),
+		cmd.LoginCommand(),
 		cmd.ConfigCommand(),
 		cmd.VMCommand(),
 		cmd.ShellCommand(),

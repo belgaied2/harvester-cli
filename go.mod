@@ -48,14 +48,15 @@ replace (
 )
 
 require (
-	github.com/docker/docker v20.10.7+incompatible // indirect
+	github.com/docker/docker v20.10.7+incompatible
 	github.com/go-kit/kit v0.11.0 // indirect
 	github.com/google/gxui v0.0.0-20151028112939-f85e0a97b3a4 // indirect
+	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/harvester/harvester v0.2.0
 	github.com/hashicorp/go-version v1.3.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/cli v1.0.0-alpha9.0.20210315153654-8de9f8e29aef
-	github.com/rancher/norman v0.0.0-20210608202517-59b3523c3133 // indirect
+	github.com/rancher/norman v0.0.0-20210608202517-59b3523c3133
 	github.com/rancher/types v0.0.0-20200528213132-b5fb46b1825d
 	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18
 	github.com/sirupsen/logrus v1.8.1

@@ -28,7 +28,7 @@ func ConfigCommand() cli.Command {
 		Name:    "get-config",
 		Aliases: []string{"c"},
 		Usage:   "Get KUBECONFIG of Harvester cluster from Rancher",
-		Action:  getConfig,
+		Action:  GetConfig,
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "path",
@@ -45,7 +45,7 @@ func ConfigCommand() cli.Command {
 	}
 }
 
-func getConfig(ctx *cli.Context) error {
+func GetConfig(ctx *cli.Context) error {
 
 	userHome, err := os.UserHomeDir()
 
@@ -54,7 +54,7 @@ func getConfig(ctx *cli.Context) error {
 	}
 	p := ctx.String("path")
 	if p == "" {
-		p = userHome + "/.harvester"
+		p = path.Join(userHome, ".harvester")
 	}
 
 	cf := Conf{

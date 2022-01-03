@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
-	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -13,8 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	VMv1 "kubevirt.io/client-go/api/v1"
-	"kubevirt.io/client-go/kubecli"
-	"kubevirt.io/client-go/log"
 	"kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 )
 
@@ -50,13 +47,6 @@ type VirtualMachineData struct {
 	CPU            uint32
 	Memory         string
 	IPAddress      string
-}
-
-// Client type holds the HarvesterClient and KubevirtClient objects which make it possible
-// to control Harvester's resources on Kubernetes
-type Client struct {
-	HarvesterClient *harvclient.Clientset
-	KubevirtClient  *kubecli.KubevirtClient
 }
 
 // VMCommand defines the CLI command that manages VMs
@@ -179,19 +169,6 @@ func VMCommand() cli.Command {
 	}
 }
 
-func defaultAction(fn func(ctx *cli.Context) error) func(ctx *cli.Context) error {
-	return func(ctx *cli.Context) error {
-		if ctx.Bool("help") {
-			err := cli.ShowAppHelp(ctx)
-			if err != nil {
-				log.Log.Info("Issue encountered during executing help command")
-			}
-			return nil
-		}
-		return fn(ctx)
-	}
-}
-
 func vmLs(ctx *cli.Context) error {
 
 	c, err := GetHarvesterClient(ctx)
@@ -288,7 +265,7 @@ func vmCreate(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		logrus.Debug("Image ID %s given does exist!", ctx.String("vm-image-id")) // nolint: vet
+		logrus.Debugf("Image ID %s given does exist!", ctx.String("vm-image-id"))
 	} else {
 		err = setDefaultVMImage(c, ctx)
 		if err != nil {
@@ -303,7 +280,7 @@ func vmCreate(ctx *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		logrus.Debug("Image ID %s given does exist!", ctx.String("ssh-keyname")) //nolint: vet
+		logrus.Debugf("Image ID %s given does exist!", ctx.String("ssh-keyname"))
 	} else {
 		err = setDefaultSSHKey(c, ctx)
 		if err != nil {
@@ -575,7 +552,7 @@ func setDefaultVMImage(c Client, ctx *cli.Context) error {
 	err = ctx.Set("vm-image-id", imageID)
 
 	if err != nil {
-		logrus.Warn("Error encountered during the storage of the imageID value: %s", imageID) // nolint: vet
+		logrus.Warnf("Error encountered during the storage of the imageID value: %s", imageID)
 	}
 
 	return nil
@@ -598,7 +575,7 @@ func setDefaultSSHKey(c Client, ctx *cli.Context) error {
 	err = ctx.Set("ssh-keyname", sshKey.Name)
 
 	if err != nil {
-		logrus.Warn("Error encountered during the storage of the SSH Keyname value: %s", sshKey.Name) // nolint: vet
+		logrus.Warnf("Error encountered during the storage of the SSH Keyname value: %s", sshKey.Name)
 	}
 
 	return nil

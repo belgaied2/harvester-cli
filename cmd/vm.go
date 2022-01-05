@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	rcmd "github.com/rancher/cli/cmd"
@@ -140,7 +141,7 @@ func VMCommand() cli.Command {
 					},
 					cli.StringFlag{
 						Name:   "template, from-template",
-						Usage:  "Harvester VM Template to use for creating the VM",
+						Usage:  "Harvester VM Template to use for creating the VM in the format <template_name>:<version> or <template> in which case the latest version will be used",
 						EnvVar: "HARVESTER_VM_TEMPLATE",
 						Value:  "",
 					},
@@ -272,8 +273,82 @@ func vmCreate(ctx *cli.Context) error {
 
 //vmCreateFromTemplate creates a VM from a VM template provided in the CLI command
 func vmCreateFromTemplate(ctx *cli.Context, c Client) error {
-	// template := ctx.String("template")
+	template := ctx.String("template")
+
+	noFlagList := []string{"cpus", "memory", "disk", "vm-image-id", "ssk-keyname", "cloud-init-user-data", "cloud-init-network-data"}
+
+	for _, flag := range noFlagList {
+		if flag != "" {
+			return fmt.Errorf("the flag %s was given when using template flag, this is not permitted", flag)
+		}
+	}
+
+	// checking template format
+	subCompTemplate := SplitOnColon(template)
+
+	if len(subCompTemplate) > 2 {
+		return fmt.Errorf("given template flag does not have the format <template_name> or <template_name>:<version>")
+	}
+
+	if _, err := strconv.Atoi(subCompTemplate[1]); err != nil {
+		return fmt.Errorf("version given in template flag %s is not an integer", subCompTemplate[1])
+	}
+
+	templateName := subCompTemplate[0]
+	var version int
+	var err error
+	if len(subCompTemplate) == 1 {
+		version = 0
+	} else if len(subCompTemplate) == 2 {
+		version, err = strconv.Atoi(subCompTemplate[1])
+	}
+
+	// checking if template exists
+	templateContent, err := c.HarvesterClient.HarvesterhciV1beta1().VirtualMachineTemplates(ctx.String("namespace")).Get(context.TODO(), templateName, k8smetav1.GetOptions{})
+
+	if err != nil {
+		return fmt.Errorf("template %s was not found on the Harvester Cluster", subCompTemplate[0])
+	}
+
+	// Picking the templateVersion
+	var templateVersion *v1beta1.VirtualMachineTemplateVersion
+	if version == 0 {
+		templateVersionString := templateContent.Spec.DefaultVersionID
+		templateVersion, err = c.HarvesterClient.HarvesterhciV1beta1().VirtualMachineTemplateVersions(ctx.String("namespace")).Get(context.TODO(), templateVersionString, k8smetav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+	} else {
+		templateVersion, err = fetchTemplateVersionFromInt(ctx, c, version, templateName)
+	}
+
+	ctx.Set("cpus", templateVersion.Spec.VM.Spec)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func fetchTemplateVersionFromInt(ctx *cli.Context, c Client, version int, templateName string) (*v1beta1.VirtualMachineTemplateVersion, error) {
+
+	templateSelector := "template.harvesterhci.io/templateID=" + templateName
+
+	allTemplateVersions, err := c.HarvesterClient.HarvesterhciV1beta1().VirtualMachineTemplateVersions(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{
+		LabelSelector: templateSelector,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, serverTemplateVersion := range allTemplateVersions.Items {
+		if version == serverTemplateVersion.Status.Version {
+			return &serverTemplateVersion, nil
+		}
+
+	}
 }
 
 //vmCreateFromImage creates a VM from a VM Image using the CLI command context to get information

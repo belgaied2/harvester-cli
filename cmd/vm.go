@@ -12,11 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	VMv1 "kubevirt.io/client-go/api/v1"
-	"kubevirt.io/containerized-data-importer/pkg/apis/core/v1alpha1"
 )
 
 const (
-	vmAnnotationDescription     = "field.cattle.io/description"
+	vmAnnotationPVC             = "harvesterhci.io/volumeClaimTemplates"
 	vmAnnotationNetworkIps      = "networks.harvesterhci.io/ips"
 	dvAnnotationImageID         = "harvesterhci.io/imageId"
 	defaultDiskSize             = "10Gi"
@@ -139,6 +138,12 @@ func VMCommand() cli.Command {
 						EnvVar: "HARVESTER_NETWORK_DATA",
 						Value:  "",
 					},
+					cli.StringFlag{
+						Name:   "template, from-template",
+						Usage:  "Harvester VM Template to use for creating the VM",
+						EnvVar: "HARVESTER_VM_TEMPLATE",
+						Value:  "",
+					},
 				},
 			},
 			{
@@ -250,14 +255,31 @@ func vmDelete(ctx *cli.Context) error {
 	return (*c.KubevirtClient).VirtualMachine(ctx.String("namespace")).Delete(vmName, &k8smetav1.DeleteOptions{})
 }
 
+// vmCreate implements the CLI *vm create* command, there are two options, either to create a VM from a Harvester VM template or from a VM image
 func vmCreate(ctx *cli.Context) error {
-
 	c, err := GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
 	}
 
+	if ctx.String("template") != "" {
+		return vmCreateFromTemplate(ctx, c)
+	} else {
+		return vmCreateFromImage(ctx, c)
+	}
+}
+
+//vmCreateFromTemplate creates a VM from a VM template provided in the CLI command
+func vmCreateFromTemplate(ctx *cli.Context, c Client) error {
+	// template := ctx.String("template")
+	return nil
+}
+
+//vmCreateFromImage creates a VM from a VM Image using the CLI command context to get information
+func vmCreateFromImage(ctx *cli.Context, c Client) error {
+
+	var err error
 	// Checking existence of Image ID and if not, using default ubuntu image.
 	imageID := ctx.String("vm-image-id")
 	if imageID != "" {
@@ -288,18 +310,15 @@ func vmCreate(ctx *cli.Context) error {
 		}
 	}
 
-	sc := "longhorn-" + ctx.String("vm-image-id")
-	dsAPIGroup := "storage.k8s.io"
 	diskRandomID := RandomID()
 	vmName := ctx.Args().First()
 	pvcName := vmName + "-disk-0-" + diskRandomID
-
+	pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-image-d9528\"}}]"
 	vmLabels := map[string]string{
 		"harvesterhci.io/creator": "harvester",
 	}
 	vmiLabels := vmLabels
 	vmiLabels["harvesterhci.io/vmName"] = vmName
-	volumeMode := v1.PersistentVolumeBlock
 
 	cloudInitUserData, err := getCloudInitData(c, ctx, "user")
 
@@ -327,47 +346,14 @@ func vmCreate(ctx *cli.Context) error {
 			Name:      vmName,
 			Namespace: ctx.String("namespace"),
 			Annotations: map[string]string{
-				vmAnnotationDescription: ctx.String("vm-description"),
-				vmAnnotationNetworkIps:  "[]",
+
+				vmAnnotationPVC:        pvcAnnotation,
+				vmAnnotationNetworkIps: "[]",
 			},
 			Labels: vmLabels,
 		},
 		Spec: VMv1.VirtualMachineSpec{
 			Running: NewTrue(),
-			DataVolumeTemplates: []VMv1.DataVolumeTemplateSpec{
-				{
-					ObjectMeta: k8smetav1.ObjectMeta{
-						Name: pvcName,
-						Annotations: map[string]string{
-							dvAnnotationImageID: ctx.String("namespace") + "/" + ctx.String("vm-image-id"),
-						},
-					},
-					Spec: v1alpha1.DataVolumeSpec{
-						Source: v1alpha1.DataVolumeSource{
-							Blank: &v1alpha1.DataVolumeBlankImage{},
-						},
-						PVC: &v1.PersistentVolumeClaimSpec{
-							AccessModes: []v1.PersistentVolumeAccessMode{
-								"ReadWriteOnce",
-							},
-							Resources: v1.ResourceRequirements{
-								Requests: v1.ResourceList{
-									"storage": resource.MustParse(ctx.String("disk-size")),
-								},
-							},
-
-							StorageClassName: &sc,
-							VolumeMode:       &volumeMode,
-
-							DataSource: &v1.TypedLocalObjectReference{
-								APIGroup: &dsAPIGroup,
-							},
-						},
-					},
-					// DataSource: nil,
-
-				},
-			},
 
 			Template: &VMv1.VirtualMachineInstanceTemplateSpec{
 				ObjectMeta: k8smetav1.ObjectMeta{
@@ -392,8 +378,8 @@ func vmCreate(ctx *cli.Context) error {
 						{
 							Name: "disk-0",
 							VolumeSource: VMv1.VolumeSource{
-								DataVolume: &VMv1.DataVolumeSource{
-									Name: pvcName,
+								PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+									ClaimName: pvcName,
 								},
 							},
 						},

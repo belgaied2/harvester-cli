@@ -66,5 +66,4 @@ require (
 	k8s.io/api v0.20.6
 	k8s.io/apimachinery v0.20.6
 	kubevirt.io/client-go v0.41.0
-	kubevirt.io/containerized-data-importer v1.31.0
 )

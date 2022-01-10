@@ -730,7 +730,7 @@ func getCloudInitData(ctx *cli.Context, scope string) (*v1.ConfigMap, error) {
 	ciData, err = c.CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
 
 	if err != nil && cmName == ctx.String(flagName) {
-		return nil, fmt.Errorf("%[1]v config map was not found, please specifiy another configmap or remove the %[1]v flag to use the default one for ubuntu", cmName)
+		return nil, fmt.Errorf("%[1]v config map was not found, please specify another configmap or remove the %[1]v flag to use the default one for ubuntu", cmName)
 	}
 
 	var cloudInitContent string

@@ -21,7 +21,6 @@ import (
 const (
 	vmAnnotationPVC             = "harvesterhci.io/volumeClaimTemplates"
 	vmAnnotationNetworkIps      = "networks.harvesterhci.io/ips"
-	dvAnnotationImageID         = "harvesterhci.io/imageId"
 	defaultDiskSize             = "10Gi"
 	defaultMemSize              = "1Gi"
 	defaultNbCPUCores           = 1
@@ -359,8 +358,17 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 	vmImageIdWithNamespace := pvc.ObjectMeta.Annotations["harvesterhci.io/imageId"]
 	vmImageId := strings.Split(vmImageIdWithNamespace, "/")[1]
 
-	ctx.Set("vm-image-id", vmImageId)
-	ctx.Set("disk-size", pvc.Spec.Resources.Requests.Storage().String())
+	err = ctx.Set("vm-image-id", vmImageId)
+
+	if err != nil {
+		return fmt.Errorf("error during setting flag to context: %w", err)
+	}
+
+	err = ctx.Set("disk-size", pvc.Spec.Resources.Requests.Storage().String())
+
+	if err != nil {
+		return fmt.Errorf("error during setting flag to context: %w", err)
+	}
 
 	vmTemplate := templateVersion.Spec.VM.Spec.Template
 

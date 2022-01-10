@@ -1,7 +1,8 @@
 name: Multi-Arch release
 
-on: release
-  types: [created]
+on: 
+  release
+    types: [created]
 
 jobs:
   releases-matrix:

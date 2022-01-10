@@ -13,10 +13,6 @@ import (
 	"github.com/urfave/cli"
 )
 
-func init() {
-	logrus.SetLevel(logrus.InfoLevel)
-}
-
 func main() {
 	if err := mainErr(); err != nil {
 		logrus.Fatal(err)
@@ -60,6 +56,12 @@ func mainErr() error {
 			EnvVar: "RANCHER_CONFIG",
 			Value:  path.Join(userHome, ".rancher"),
 		},
+		// cli.StringFlag{
+		// 	Name:   "loglevel",
+		// 	Usage:  "Defines the log level to be used, possible values are error, info, warn, debug and trace",
+		// 	EnvVar: "HARVESTER_LOG",
+		// 	Value:  "info",
+		// },
 	}
 	app.Commands = []cli.Command{
 

@@ -24,7 +24,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	regen "github.com/zach-klippenstein/goregen"
-	"kubevirt.io/client-go/kubecli"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -58,13 +59,6 @@ type RoleTemplateBinding struct {
 	User    string
 	Role    string
 	Created string
-}
-
-// Client type holds the HarvesterClient and KubevirtClient objects which make it possible
-// to control Harvester's resources on Kubernetes
-type Client struct {
-	HarvesterClient *harvclient.Clientset
-	KubevirtClient  *kubecli.KubevirtClient
 }
 
 func loadAndVerifyCert(path string) (string, error) {
@@ -388,22 +382,27 @@ func RandomID() string {
 }
 
 // GetHarvesterClient creates a Client for Harvester from Config input
-func GetHarvesterClient(ctx *cli.Context) (Client, error) {
+func GetHarvesterClient(ctx *cli.Context) (*harvclient.Clientset, error) {
 	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
-	kubevirtClient, err := kubecli.GetKubevirtClientFromFlags("", p)
+
+	clientConfig, err := clientcmd.BuildConfigFromFlags("", p)
 
 	if err != nil {
-		return Client{}, err
+		return &harvclient.Clientset{}, err
 	}
 
-	harvesterClient, err := harvclient.NewForConfig(kubevirtClient.Config())
+	return harvclient.NewForConfig(clientConfig)
+
+}
+
+func GetKubeClient(ctx *cli.Context) (*kubeclient.Clientset, error) {
+	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
+
+	clientConfig, err := clientcmd.BuildConfigFromFlags("", p)
+
 	if err != nil {
-		return Client{}, err
+		return &kubeclient.Clientset{}, err
 	}
 
-	return Client{
-		KubevirtClient:  &kubevirtClient,
-		HarvesterClient: harvesterClient,
-	}, nil
-
+	return kubeclient.NewForConfig(clientConfig)
 }

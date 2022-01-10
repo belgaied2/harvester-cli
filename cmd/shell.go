@@ -65,7 +65,7 @@ func getShell(ctx *cli.Context) error {
 		return err
 	}
 
-	vmi, err := (*c.KubevirtClient).VirtualMachineInstance(ctx.String("namespace")).Get(vmName, &v1.GetOptions{})
+	vmi, err := c.KubevirtV1().VirtualMachineInstances(ctx.String("namespace")).Get(context.TODO(), vmName, v1.GetOptions{})
 
 	if err != nil {
 		return fmt.Errorf("no virtual machine instance with this name exists in harvester, please check that the it is created and started")

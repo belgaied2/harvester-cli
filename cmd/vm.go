@@ -154,12 +154,18 @@ func VMCommand() cli.Command {
 				Usage:     "Stop a VM",
 				Action:    vmStop,
 				ArgsUsage: "[VM_NAME]",
+				Flags: []cli.Flag{
+					nsFlag,
+				},
 			},
 			{
 				Name:      "start",
 				Usage:     "Start a VM",
 				Action:    vmStart,
 				ArgsUsage: "[VM_NAME]",
+				Flags: []cli.Flag{
+					nsFlag,
+				},
 			},
 			{
 				Name:      "restart",
@@ -171,6 +177,7 @@ func VMCommand() cli.Command {
 						Name:  "vm-name, name",
 						Usage: "Name of the VM to restart",
 					},
+					nsFlag,
 				},
 			},
 		},
@@ -186,13 +193,13 @@ func vmLs(ctx *cli.Context) error {
 		return err
 	}
 
-	vmList, err := c.KubevirtV1().VirtualMachines("default").List(context.TODO(), k8smetav1.ListOptions{})
+	vmList, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{})
 
 	if err != nil {
 		return err
 	}
 
-	vmiList, err := c.KubevirtV1().VirtualMachineInstances("default").List(context.TODO(), k8smetav1.ListOptions{})
+	vmiList, err := c.KubevirtV1().VirtualMachineInstances(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{})
 
 	if err != nil {
 		return err
@@ -409,24 +416,25 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 	var err error
 	// Checking existence of Image ID and if not, using default ubuntu image.
 	imageID := ctx.String("vm-image-id")
+	var vmImage *v1beta1.VirtualMachineImage
 	if imageID != "" {
-		_, err := c.HarvesterhciV1beta1().VirtualMachineImages(ctx.String("namespace")).Get(context.TODO(), imageID, k8smetav1.GetOptions{})
+		vmImage, err = c.HarvesterhciV1beta1().VirtualMachineImages(ctx.String("namespace")).Get(context.TODO(), imageID, k8smetav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 		logrus.Debugf("Image ID %s given does exist!", ctx.String("vm-image-id"))
 	} else {
-		err = setDefaultVMImage(c, ctx)
+		vmImage, err = setDefaultVMImage(c, ctx)
 		if err != nil {
 			return err
 		}
 	}
-
+	storageClassName := vmImage.Status.StorageClassName
 	vmName := ctx.Args().First()
 	diskRandomID := RandomID()
 
 	pvcName := vmName + "-disk-0-" + diskRandomID
-	pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-image-d9528\"}}]"
+	pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("namespace") + "/" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
 	vmLabels := map[string]string{
 		"harvesterhci.io/creator": "harvester",
 	}
@@ -585,7 +593,7 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 		return err
 	}
 
-	_, err = c.KubevirtV1().VirtualMachines("default").Create(context.TODO(), ubuntuVM, k8smetav1.CreateOptions{})
+	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Create(context.TODO(), ubuntuVM, k8smetav1.CreateOptions{})
 
 	if err != nil {
 		return err
@@ -602,7 +610,7 @@ func vmStart(ctx *cli.Context) error {
 		return err
 	}
 
-	vm, err := c.KubevirtV1().VirtualMachines("default").Get(context.TODO(), ctx.Args().First(), k8smetav1.GetOptions{})
+	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), ctx.Args().First(), k8smetav1.GetOptions{})
 
 	*vm.Spec.Running = true
 
@@ -610,7 +618,7 @@ func vmStart(ctx *cli.Context) error {
 		return err
 	}
 
-	_, err = c.KubevirtV1().VirtualMachines("default").Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
+	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
 	return err
 }
 
@@ -622,14 +630,14 @@ func vmStop(ctx *cli.Context) error {
 		return err
 	}
 
-	vm, err := c.KubevirtV1().VirtualMachines("default").Get(context.TODO(), ctx.Args().First(), k8smetav1.GetOptions{})
+	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), ctx.Args().First(), k8smetav1.GetOptions{})
 	*vm.Spec.Running = false
 
 	if err != nil {
 		return err
 	}
 
-	_, err = c.KubevirtV1().VirtualMachines("default").Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
+	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
 	return err
 }
 
@@ -652,39 +660,44 @@ func vmiAnnotations(pvcName string, sshKeyName string) map[string]string {
 }
 
 // setDefaultVMImage creates a default VM image based on Ubuntu if none has been provided at the command line.
-func setDefaultVMImage(c *harvclient.Clientset, ctx *cli.Context) error {
+func setDefaultVMImage(c *harvclient.Clientset, ctx *cli.Context) (result *v1beta1.VirtualMachineImage, err error) {
 
-	vmImages, err := c.HarvesterhciV1beta1().VirtualMachineImages("default").List(context.TODO(), k8smetav1.ListOptions{})
+	result = &v1beta1.VirtualMachineImage{}
+	vmImages, err1 := c.HarvesterhciV1beta1().VirtualMachineImages(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{})
 
-	if err != nil {
-		return err
+	if err1 != nil {
+		err = fmt.Errorf("error during setting default VM Image: %w", err1)
+		return
 	}
 
 	var vmImage *v1beta1.VirtualMachineImage
 
 	if len(vmImages.Items) == 0 {
-		vmImage, err = CreateVMImage(c, "ubuntu-default-image", ubuntuDefaultImage)
-		if err != nil {
-			return fmt.Errorf("impossible to create a default VM Image")
+		vmImage, err1 = CreateVMImage(c, ctx.String("namespace"), "ubuntu-default-image", ubuntuDefaultImage)
+		if err1 != nil {
+			err = fmt.Errorf("impossible to create a default VM Image: %w", err1)
+			return
 		}
 	} else {
 		vmImage = &vmImages.Items[0]
 	}
 
 	imageID := vmImage.ObjectMeta.Name
-	err = ctx.Set("vm-image-id", imageID)
+	err1 = ctx.Set("vm-image-id", imageID)
 
-	if err != nil {
+	if err1 != nil {
 		logrus.Warnf("error encountered during the storage of the imageID value: %s", imageID)
 	}
 
-	return nil
+	result = vmImage
+
+	return
 }
 
 // setDefaultSSHKey assign a default SSH key to the VM if none was provided at the command line
 func setDefaultSSHKey(c *harvclient.Clientset, ctx *cli.Context) (sshKey *v1beta1.KeyPair, err error) {
 	sshKey = &v1beta1.KeyPair{}
-	sshKeys, err1 := c.HarvesterhciV1beta1().KeyPairs("default").List(context.TODO(), k8smetav1.ListOptions{})
+	sshKeys, err1 := c.HarvesterhciV1beta1().KeyPairs(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{})
 
 	if err1 != nil {
 		err = fmt.Errorf("error during listing Keypairs: %w", err1)
@@ -761,9 +774,9 @@ func getCloudInitData(ctx *cli.Context, scope string) (*v1.ConfigMap, error) {
 }
 
 // CreateVMImage will create a VM Image on Harvester given an image name and an image URL
-func CreateVMImage(c *harvclient.Clientset, imageName string, url string) (*v1beta1.VirtualMachineImage, error) {
+func CreateVMImage(c *harvclient.Clientset, namespace string, imageName string, url string) (*v1beta1.VirtualMachineImage, error) {
 
-	vmImage, err := c.HarvesterhciV1beta1().VirtualMachineImages("default").Create(
+	vmImage, err := c.HarvesterhciV1beta1().VirtualMachineImages(namespace).Create(
 		context.TODO(),
 		&v1beta1.VirtualMachineImage{
 			ObjectMeta: k8smetav1.ObjectMeta{

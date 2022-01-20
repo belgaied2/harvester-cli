@@ -147,6 +147,12 @@ func VMCommand() cli.Command {
 						EnvVar: "HARVESTER_VM_TEMPLATE",
 						Value:  "",
 					},
+					cli.IntFlag{
+						Name:   "count, multiple",
+						Usage:  "Number of identical VMs to create",
+						EnvVar: "HARVESTER_VM_COUNT",
+						Value:  1,
+					},
 				},
 			},
 			{
@@ -436,53 +442,67 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 	}
 	vmiLabels := vmLabels
 
-	vmName := ctx.Args().First()
-	vmiLabels["harvesterhci.io/vmName"] = vmName
-	diskRandomID := RandomID()
-	pvcName := vmName + "-disk-0-" + diskRandomID
-	pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("namespace") + "/" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
+	if ctx.Int("count") == 0 {
+		return fmt.Errorf("VM count provided is 0, no VM will be created")
+	}
+	vmNameBase := ctx.Args().First()
 
-	if vmTemplate == nil {
+	for i := 1; i <= ctx.Int("count"); i++ {
+		var vmName string
+		if ctx.Int("count") > 1 {
+			vmName = vmNameBase + "-" + fmt.Sprint(i)
+		} else {
+			vmName = vmNameBase
+		}
 
-		vmTemplate, err = buildVMTemplate(ctx, c, pvcName, vmiLabels, vmName)
+		vmiLabels["harvesterhci.io/vmName"] = vmName
+		diskRandomID := RandomID()
+		pvcName := vmName + "-disk-0-" + diskRandomID
+		pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("namespace") + "/" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
+
+		if vmTemplate == nil {
+
+			vmTemplate, err = buildVMTemplate(ctx, c, pvcName, vmiLabels, vmName)
+			if err != nil {
+				return err
+			}
+		} else {
+			vmTemplate.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
+		}
+
+		ubuntuVM := &VMv1.VirtualMachine{
+			ObjectMeta: k8smetav1.ObjectMeta{
+				Name:      vmName,
+				Namespace: ctx.String("namespace"),
+				Annotations: map[string]string{
+
+					vmAnnotationPVC:        pvcAnnotation,
+					vmAnnotationNetworkIps: "[]",
+				},
+				Labels: vmLabels,
+			},
+			Spec: VMv1.VirtualMachineSpec{
+				Running: NewTrue(),
+
+				Template: vmTemplate,
+			},
+		}
+
 		if err != nil {
 			return err
 		}
-	} else {
-		vmTemplate.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
-	}
 
-	ubuntuVM := &VMv1.VirtualMachine{
-		ObjectMeta: k8smetav1.ObjectMeta{
-			Name:      vmName,
-			Namespace: ctx.String("namespace"),
-			Annotations: map[string]string{
+		_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Create(context.TODO(), ubuntuVM, k8smetav1.CreateOptions{})
 
-				vmAnnotationPVC:        pvcAnnotation,
-				vmAnnotationNetworkIps: "[]",
-			},
-			Labels: vmLabels,
-		},
-		Spec: VMv1.VirtualMachineSpec{
-			Running: NewTrue(),
-
-			Template: vmTemplate,
-		},
-	}
-
-	if err != nil {
-		return err
-	}
-
-	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Create(context.TODO(), ubuntuVM, k8smetav1.CreateOptions{})
-
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
+//buildVMTemplate creates a *VMv1.VirtualMachineInstanceTemplateSpec from the CLI Flags and some computed values
 func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	pvcName string, vmiLabels map[string]string, vmName string) (vmTemplate *VMv1.VirtualMachineInstanceTemplateSpec, err error) {
 

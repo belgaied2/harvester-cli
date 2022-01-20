@@ -430,142 +430,23 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 		}
 	}
 	storageClassName := vmImage.Status.StorageClassName
-	vmName := ctx.Args().First()
-	diskRandomID := RandomID()
 
-	pvcName := vmName + "-disk-0-" + diskRandomID
-	pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("namespace") + "/" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
 	vmLabels := map[string]string{
 		"harvesterhci.io/creator": "harvester",
 	}
 	vmiLabels := vmLabels
+
+	vmName := ctx.Args().First()
 	vmiLabels["harvesterhci.io/vmName"] = vmName
+	diskRandomID := RandomID()
+	pvcName := vmName + "-disk-0-" + diskRandomID
+	pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("namespace") + "/" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
 
 	if vmTemplate == nil {
 
-		cloudInitUserData, err := getCloudInitData(ctx, "user")
-
+		vmTemplate, err = buildVMTemplate(ctx, c, pvcName, vmiLabels, vmName)
 		if err != nil {
 			return err
-		}
-
-		var sshKey *v1beta1.KeyPair
-
-		// Checking existence of the SSH KeyPair
-		keyName := ctx.String("ssh-keyname")
-		if keyName != "" {
-			sshKey, err = c.HarvesterhciV1beta1().KeyPairs(ctx.String("namespace")).Get(context.TODO(), keyName, k8smetav1.GetOptions{})
-			if err != nil {
-				return fmt.Errorf("error during getting keypair from Harvester: %w", err)
-			}
-			logrus.Debugf("SSH Key Name %s given does exist!", ctx.String("ssh-keyname"))
-
-		} else {
-			sshKey, err = setDefaultSSHKey(c, ctx)
-			if err != nil {
-				return fmt.Errorf("error during setting default SSH key: %w", err)
-			}
-		}
-
-		if sshKey == nil || sshKey == (&v1beta1.KeyPair{}) {
-			return fmt.Errorf("no keypair could be defined")
-		}
-
-		cloudInitSSHSection := "\nssh_authorized_keys:\n  - " + sshKey.Spec.PublicKey + "\n"
-
-		cloudInitNetworkData, err := getCloudInitData(ctx, "network")
-		if err != nil {
-			return fmt.Errorf("error during getting cloud-init for networking: %w", err)
-		}
-		logrus.Debug("CloudInit: ")
-
-		vmTemplate = &VMv1.VirtualMachineInstanceTemplateSpec{
-			ObjectMeta: k8smetav1.ObjectMeta{
-				Annotations: vmiAnnotations(pvcName, ctx.String("ssh-keyname")),
-				Labels:      vmiLabels,
-			},
-			Spec: VMv1.VirtualMachineInstanceSpec{
-				Hostname: vmName,
-				Networks: []VMv1.Network{
-
-					{
-						Name: "nic-1",
-
-						NetworkSource: VMv1.NetworkSource{
-							Multus: &VMv1.MultusNetwork{
-								NetworkName: "vlan1",
-							},
-						},
-					},
-				},
-				Volumes: []VMv1.Volume{
-					{
-						Name: "disk-0",
-						VolumeSource: VMv1.VolumeSource{
-							PersistentVolumeClaim: &VMv1.PersistentVolumeClaimVolumeSource{
-								PersistentVolumeClaimVolumeSource: v1.PersistentVolumeClaimVolumeSource{
-									ClaimName: pvcName,
-								},
-							},
-						},
-					},
-					{
-						Name: "cloudinitdisk",
-						VolumeSource: VMv1.VolumeSource{
-							CloudInitNoCloud: &VMv1.CloudInitNoCloudSource{
-								UserData:    cloudInitUserData.Data["cloudInit"] + cloudInitSSHSection,
-								NetworkData: cloudInitNetworkData.Data["cloudInit"],
-							},
-						},
-					},
-				},
-				Domain: VMv1.DomainSpec{
-					CPU: &VMv1.CPU{
-						Cores:   uint32(ctx.Int("cpus")),
-						Sockets: uint32(ctx.Int("cpus")),
-						Threads: uint32(ctx.Int("cpus")),
-					},
-					Devices: VMv1.Devices{
-						Inputs: []VMv1.Input{
-							{
-								Bus:  "usb",
-								Type: "tablet",
-								Name: "tablet",
-							},
-						},
-						Interfaces: []VMv1.Interface{
-							{
-								Name:                   "nic-1",
-								Model:                  "virtio",
-								InterfaceBindingMethod: VMv1.DefaultBridgeNetworkInterface().InterfaceBindingMethod,
-							},
-						},
-						Disks: []VMv1.Disk{
-							{
-								Name: "disk-0",
-								DiskDevice: VMv1.DiskDevice{
-									Disk: &VMv1.DiskTarget{
-										Bus: "virtio",
-									},
-								},
-							},
-							{
-								Name: "cloudinitdisk",
-								DiskDevice: VMv1.DiskDevice{
-									Disk: &VMv1.DiskTarget{
-										Bus: "virtio",
-									},
-								},
-							},
-						},
-					},
-					Resources: VMv1.ResourceRequirements{
-						Requests: v1.ResourceList{
-							"memory": resource.MustParse(ctx.String("memory")),
-						},
-					},
-				},
-			},
 		}
 	} else {
 		vmTemplate.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
@@ -600,6 +481,142 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 	}
 
 	return nil
+}
+
+func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
+	pvcName string, vmiLabels map[string]string, vmName string) (vmTemplate *VMv1.VirtualMachineInstanceTemplateSpec, err error) {
+
+	var err1 error
+	cloudInitUserData, err1 := getCloudInitData(ctx, "user")
+	vmTemplate = nil
+	if err1 != nil {
+		err = fmt.Errorf("error during getting cloud init user data from Harvester: %w", err1)
+		return
+	}
+
+	var sshKey *v1beta1.KeyPair
+
+	keyName := ctx.String("ssh-keyname")
+	if keyName != "" {
+		sshKey, err1 = c.HarvesterhciV1beta1().KeyPairs(ctx.String("namespace")).Get(context.TODO(), keyName, k8smetav1.GetOptions{})
+		if err1 != nil {
+			err = fmt.Errorf("error during getting keypair from Harvester: %w", err1)
+			return
+		}
+		logrus.Debugf("SSH Key Name %s given does exist!", ctx.String("ssh-keyname"))
+
+	} else {
+		sshKey, err1 = setDefaultSSHKey(c, ctx)
+		if err1 != nil {
+			err = fmt.Errorf("error during setting default SSH key: %w", err1)
+			return
+		}
+	}
+
+	if sshKey == nil || sshKey == (&v1beta1.KeyPair{}) {
+		err = fmt.Errorf("no keypair could be defined")
+		return
+	}
+
+	cloudInitSSHSection := "\nssh_authorized_keys:\n  - " + sshKey.Spec.PublicKey + "\n"
+
+	cloudInitNetworkData, err1 := getCloudInitData(ctx, "network")
+	if err1 != nil {
+		err = fmt.Errorf("error during getting cloud-init for networking: %w", err1)
+		return
+	}
+	logrus.Debug("CloudInit: ")
+
+	err1 = nil
+	vmTemplate = &VMv1.VirtualMachineInstanceTemplateSpec{
+		ObjectMeta: k8smetav1.ObjectMeta{
+			Annotations: vmiAnnotations(pvcName, ctx.String("ssh-keyname")),
+			Labels:      vmiLabels,
+		},
+		Spec: VMv1.VirtualMachineInstanceSpec{
+			Hostname: vmName,
+			Networks: []VMv1.Network{
+
+				{
+					Name: "nic-1",
+
+					NetworkSource: VMv1.NetworkSource{
+						Multus: &VMv1.MultusNetwork{
+							NetworkName: "vlan1",
+						},
+					},
+				},
+			},
+			Volumes: []VMv1.Volume{
+				{
+					Name: "disk-0",
+					VolumeSource: VMv1.VolumeSource{
+						PersistentVolumeClaim: &VMv1.PersistentVolumeClaimVolumeSource{
+							PersistentVolumeClaimVolumeSource: v1.PersistentVolumeClaimVolumeSource{
+								ClaimName: pvcName,
+							},
+						},
+					},
+				},
+				{
+					Name: "cloudinitdisk",
+					VolumeSource: VMv1.VolumeSource{
+						CloudInitNoCloud: &VMv1.CloudInitNoCloudSource{
+							UserData:    cloudInitUserData.Data["cloudInit"] + cloudInitSSHSection,
+							NetworkData: cloudInitNetworkData.Data["cloudInit"],
+						},
+					},
+				},
+			},
+			Domain: VMv1.DomainSpec{
+				CPU: &VMv1.CPU{
+					Cores:   uint32(ctx.Int("cpus")),
+					Sockets: uint32(ctx.Int("cpus")),
+					Threads: uint32(ctx.Int("cpus")),
+				},
+				Devices: VMv1.Devices{
+					Inputs: []VMv1.Input{
+						{
+							Bus:  "usb",
+							Type: "tablet",
+							Name: "tablet",
+						},
+					},
+					Interfaces: []VMv1.Interface{
+						{
+							Name:                   "nic-1",
+							Model:                  "virtio",
+							InterfaceBindingMethod: VMv1.DefaultBridgeNetworkInterface().InterfaceBindingMethod,
+						},
+					},
+					Disks: []VMv1.Disk{
+						{
+							Name: "disk-0",
+							DiskDevice: VMv1.DiskDevice{
+								Disk: &VMv1.DiskTarget{
+									Bus: "virtio",
+								},
+							},
+						},
+						{
+							Name: "cloudinitdisk",
+							DiskDevice: VMv1.DiskDevice{
+								Disk: &VMv1.DiskTarget{
+									Bus: "virtio",
+								},
+							},
+						},
+					},
+				},
+				Resources: VMv1.ResourceRequirements{
+					Requests: v1.ResourceList{
+						"memory": resource.MustParse(ctx.String("memory")),
+					},
+				},
+			},
+		},
+	}
+	return
 }
 
 // vmStart issues a power on for the virtual machine instance.

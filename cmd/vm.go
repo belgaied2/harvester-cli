@@ -260,7 +260,7 @@ func vmLs(ctx *cli.Context) error {
 	return writer.Err()
 }
 
-//vmDelete deletes a VM which name is given in argument from Harvester
+//vmDelete deletes VMs which name is given in argument
 func vmDelete(ctx *cli.Context) error {
 	c, err := GetHarvesterClient(ctx)
 
@@ -268,9 +268,15 @@ func vmDelete(ctx *cli.Context) error {
 		return err
 	}
 
-	vmName := ctx.Args().First()
+	for _, vmName := range ctx.Args() {
+		err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Delete(context.TODO(), vmName, k8smetav1.DeleteOptions{})
+		if err != nil {
+			return fmt.Errorf("VM named %s could not be deleted successfully: %w", vmName, err)
+		}
+	}
 
-	return c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Delete(context.TODO(), vmName, k8smetav1.DeleteOptions{})
+	return nil
+
 }
 
 // vmCreate implements the CLI *vm create* command, there are two options, either to create a VM from a Harvester VM template or from a VM image
@@ -639,7 +645,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	return
 }
 
-// vmStart issues a power on for the virtual machine instance.
+// vmStart issues a power on for the virtual machine instances which name is given as argument to the start command.
 func vmStart(ctx *cli.Context) error {
 
 	c, err := GetHarvesterClient(ctx)
@@ -647,16 +653,25 @@ func vmStart(ctx *cli.Context) error {
 		return err
 	}
 
-	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), ctx.Args().First(), k8smetav1.GetOptions{})
+	for _, vmName := range ctx.Args() {
+		vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
 
-	*vm.Spec.Running = true
+		*vm.Spec.Running = true
 
-	if err != nil {
-		return err
+		if err != nil {
+			err1 := fmt.Errorf("vm with provided name not found: %w", err)
+			logrus.Errorf("No VM named %s was not found (%w) the subsequent VMs will not be started!", vmName, err)
+			return err1
+		}
+
+		_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
+
+		if err != nil {
+			logrus.Warnf("An error happened while starting VM %s: %w", vmName, err)
+		}
 	}
 
-	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
-	return err
+	return nil
 }
 
 // Stop issues a power off for the virtual machine instance.
@@ -666,15 +681,21 @@ func vmStop(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	for _, vmName := range ctx.Args() {
+		vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
+		*vm.Spec.Running = false
 
-	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), ctx.Args().First(), k8smetav1.GetOptions{})
-	*vm.Spec.Running = false
+		if err != nil {
+			err1 := fmt.Errorf("vm with provided name not found: %w", err)
+			logrus.Errorf("No VM named %s was not found (%w) the subsequent VMs will not be stopped!", vmName, err)
+			return err1
+		}
 
-	if err != nil {
-		return err
+		_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
+		if err != nil {
+			logrus.Warnf("An error happened while stopping VM %s: %w", vmName, err)
+		}
 	}
-
-	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
 	return err
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
+	"github.com/minio/pkg/wildcard"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -269,9 +270,25 @@ func vmDelete(ctx *cli.Context) error {
 	}
 
 	for _, vmName := range ctx.Args() {
-		err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Delete(context.TODO(), vmName, k8smetav1.DeleteOptions{})
-		if err != nil {
-			return fmt.Errorf("VM named %s could not be deleted successfully: %w", vmName, err)
+
+		if strings.Contains(vmName, "*") || strings.Contains(vmName, "?") {
+			matchingVMs := buildVMListMatchingWildcard(c, ctx, vmName)
+
+			for _, vmExisting := range matchingVMs {
+				err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Delete(context.TODO(), vmExisting.Name, k8smetav1.DeleteOptions{})
+				if err != nil {
+					return fmt.Errorf("VM named %s could not be deleted successfully: %w", vmExisting.Name, err)
+				} else {
+					logrus.Infof("VM %s deleted successfully", vmName)
+				}
+			}
+		} else {
+			err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Delete(context.TODO(), vmName, k8smetav1.DeleteOptions{})
+			if err != nil {
+				return fmt.Errorf("VM named %s could not be deleted successfully: %w", vmName, err)
+			} else {
+				logrus.Infof("VM %s deleted successfully", vmName)
+			}
 		}
 	}
 
@@ -297,15 +314,6 @@ func vmCreate(ctx *cli.Context) error {
 //vmCreateFromTemplate creates a VM from a VM template provided in the CLI command
 func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 	template := ctx.String("template")
-
-	// noFlagList := []string{"cpus", "memory", "disk", "vm-image-id", "ssk-keyname", "cloud-init-user-data", "cloud-init-network-data"}
-
-	// for _, flag := range noFlagList {
-	// 	fmt.Printf("Flag %s has a value %s", flag, ctx.String(flag))
-	// 	if ctx.String(flag) != "" {
-	// 		return fmt.Errorf("the flag %s was given when using template flag, this is not permitted", flag)
-	// 	}
-	// }
 
 	logrus.Warnf("You are using a template flag, please be aware that any other flag will be IGNORED!")
 
@@ -553,7 +561,6 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	}
 	logrus.Debug("CloudInit: ")
 
-	err1 = nil
 	vmTemplate = &VMv1.VirtualMachineInstanceTemplateSpec{
 		ObjectMeta: k8smetav1.ObjectMeta{
 			Annotations: vmiAnnotations(pvcName, ctx.String("ssh-keyname")),
@@ -645,7 +652,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	return
 }
 
-// vmStart issues a power on for the virtual machine instances which name is given as argument to the start command.
+// vmStart issues a power on for the virtual machine instances which names are given as argument to the start command.
 func vmStart(ctx *cli.Context) error {
 
 	c, err := GetHarvesterClient(ctx)
@@ -654,27 +661,74 @@ func vmStart(ctx *cli.Context) error {
 	}
 
 	for _, vmName := range ctx.Args() {
-		vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
 
-		*vm.Spec.Running = true
+		if strings.Contains(vmName, "*") || strings.Contains(vmName, "?") {
+			matchingVMs := buildVMListMatchingWildcard(c, ctx, vmName)
 
-		if err != nil {
-			err1 := fmt.Errorf("vm with provided name not found: %w", err)
-			logrus.Errorf("No VM named %s was not found (%w) the subsequent VMs will not be started!", vmName, err)
-			return err1
-		}
+			for _, vmNameExisting := range matchingVMs {
+				err = startVMbyRef(c, ctx, vmNameExisting)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			return startVMbyName(c, ctx, vmName)
 
-		_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
-
-		if err != nil {
-			logrus.Warnf("An error happened while starting VM %s: %w", vmName, err)
 		}
 	}
 
 	return nil
 }
 
-// Stop issues a power off for the virtual machine instance.
+//buildVMListMatchingWildcard creates an array of VM objects which names match the given wildcard pattern
+func buildVMListMatchingWildcard(c *harvclient.Clientset, ctx *cli.Context, vmNameWildcard string) []VMv1.VirtualMachine {
+	vms, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{})
+
+	if err != nil {
+		logrus.Warnf("No VMs found with name %s", vmNameWildcard)
+	}
+
+	var matchingVMs []VMv1.VirtualMachine
+	for _, vm := range vms.Items {
+		// logrus.Warnf("current VM checked: %s", vm.Name)
+		if wildcard.Match(vmNameWildcard, vm.Name) {
+			matchingVMs = append(matchingVMs, vm)
+			// logrus.Warnf("VM %s appended to list of matching VMs", vm.Name)
+		}
+	}
+	logrus.Infof("number of matching VMs for pattern %s: %d", vmNameWildcard, len(matchingVMs))
+	return matchingVMs
+}
+
+//startVMbyName starts a VM by first issuing a GET using the VM name, then updating the resulting VM object
+func startVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) error {
+	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
+
+	if err != nil {
+		err1 := fmt.Errorf("vm with provided name not found: %w", err)
+		logrus.Errorf("No VM named %s was not found (%s) the subsequent VMs will not be started!", vmName, err)
+		return err1
+	}
+
+	return startVMbyRef(c, ctx, *vm)
+}
+
+//startVMbyRef updates a VM object to make it Running
+func startVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm VMv1.VirtualMachine) (err error) {
+
+	*vm.Spec.Running = true
+
+	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), &vm, k8smetav1.UpdateOptions{})
+
+	if err != nil {
+		logrus.Warnf("An error happened while starting VM %s: %s", vm.Name, err)
+	} else {
+		logrus.Infof("VM %s started successfully", vm.Name)
+	}
+	return nil
+}
+
+//vmStop issues a power off for the virtual machine instances which name is given as argument.
 func vmStop(ctx *cli.Context) error {
 
 	c, err := GetHarvesterClient(ctx)
@@ -682,24 +736,50 @@ func vmStop(ctx *cli.Context) error {
 		return err
 	}
 	for _, vmName := range ctx.Args() {
-		vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
-		*vm.Spec.Running = false
 
-		if err != nil {
-			err1 := fmt.Errorf("vm with provided name not found: %w", err)
-			logrus.Errorf("No VM named %s was not found (%w) the subsequent VMs will not be stopped!", vmName, err)
-			return err1
-		}
+		if strings.Contains(vmName, "*") || strings.Contains(vmName, "?") {
+			matchingVMs := buildVMListMatchingWildcard(c, ctx, vmName)
 
-		_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
-		if err != nil {
-			logrus.Warnf("An error happened while stopping VM %s: %w", vmName, err)
+			for _, vmExisting := range matchingVMs {
+				err = stopVMbyRef(c, ctx, &vmExisting)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			return stopVMbyName(c, ctx, vmName)
 		}
 	}
 	return err
 }
 
-// Restart reboots the virtual machine instance.
+//stopVMbyName will stop a VM by first finding it by its name and then call stopBMbyRef function
+func stopVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) error {
+	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
+
+	if err != nil {
+		err1 := fmt.Errorf("vm with provided name not found: %s", err)
+		logrus.Errorf("No VM named %s was not found (%s) the subsequent VMs will not be stopped!", vmName, err)
+		return err1
+	}
+
+	return stopVMbyRef(c, ctx, vm)
+}
+
+//stopVMbyRef will stop a VM by updating Spec.Running field of the VM object
+func stopVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm *VMv1.VirtualMachine) error {
+	*vm.Spec.Running = false
+
+	_, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
+	if err != nil {
+		logrus.Warnf("An error happened while stopping VM %s: %s", vm.Name, err)
+	} else {
+		logrus.Infof("VM %s stopped successfully", vm.Name)
+	}
+	return nil
+}
+
+// Restart reboots virtual machine instances by calling successively vmStop and vmStart
 func vmRestart(ctx *cli.Context) error {
 
 	err := vmStop(ctx)
@@ -733,7 +813,7 @@ func setDefaultVMImage(c *harvclient.Clientset, ctx *cli.Context) (result *v1bet
 	if len(vmImages.Items) == 0 {
 		vmImage, err1 = CreateVMImage(c, ctx.String("namespace"), "ubuntu-default-image", ubuntuDefaultImage)
 		if err1 != nil {
-			err = fmt.Errorf("impossible to create a default VM Image: %w", err1)
+			err = fmt.Errorf("impossible to create a default VM Image: %s", err1)
 			return
 		}
 	} else {
@@ -758,7 +838,7 @@ func setDefaultSSHKey(c *harvclient.Clientset, ctx *cli.Context) (sshKey *v1beta
 	sshKeys, err1 := c.HarvesterhciV1beta1().KeyPairs(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{})
 
 	if err1 != nil {
-		err = fmt.Errorf("error during listing Keypairs: %w", err1)
+		err = fmt.Errorf("error during listing Keypairs: %s", err1)
 		return
 	}
 

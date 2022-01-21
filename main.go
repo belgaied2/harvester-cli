@@ -70,6 +70,8 @@ func mainErr() error {
 		cmd.VMCommand(),
 		cmd.ShellCommand(),
 		cmd.TemplateCommand(),
+		cmd.ImageCommand(),
+		cmd.KeypairCommand(),
 	}
 
 	for _, com := range app.Commands {

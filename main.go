@@ -69,6 +69,7 @@ func mainErr() error {
 		cmd.ConfigCommand(),
 		cmd.VMCommand(),
 		cmd.ShellCommand(),
+		cmd.TemplateCommand(),
 	}
 
 	for _, com := range app.Commands {

@@ -53,7 +53,7 @@ require (
 	github.com/google/gxui v0.0.0-20151028112939-f85e0a97b3a4 // indirect
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/harvester/harvester v1.0.0
-	github.com/minio/pkg v1.1.14 // indirect
+	github.com/minio/pkg v1.1.14
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/cli v1.0.0-alpha9.0.20210315153654-8de9f8e29aef
 	github.com/rancher/norman v0.0.0-20211201154850-abe17976423e

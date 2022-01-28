@@ -450,6 +450,7 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 		}
 	}
 	storageClassName := vmImage.Status.StorageClassName
+	vmNameBase := ctx.Args().First()
 
 	vmLabels := map[string]string{
 		"harvesterhci.io/creator": "harvester",
@@ -459,7 +460,6 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 	if ctx.Int("count") == 0 {
 		return fmt.Errorf("VM count provided is 0, no VM will be created")
 	}
-	vmNameBase := ctx.Args().First()
 
 	for i := 1; i <= ctx.Int("count"); i++ {
 		var vmName string
@@ -470,18 +470,37 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 		}
 
 		vmiLabels["harvesterhci.io/vmName"] = vmName
+		vmiLabels["harvesterhci.io/vmNamePrefix"] = vmNameBase
 		diskRandomID := RandomID()
 		pvcName := vmName + "-disk-0-" + diskRandomID
 		pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("namespace") + "/" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
 
 		if vmTemplate == nil {
 
-			vmTemplate, err = buildVMTemplate(ctx, c, pvcName, vmiLabels, vmName)
+			vmTemplate, err = buildVMTemplate(ctx, c, pvcName, vmiLabels, vmNameBase)
 			if err != nil {
 				return err
 			}
 		} else {
 			vmTemplate.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
+			vmTemplate.ObjectMeta.Labels["harvesterhci.io/vmNamePrefix"] = vmNameBase
+			vmTemplate.Spec.Affinity = &v1.Affinity{
+				PodAntiAffinity: &v1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
+						{
+							Weight: int32(1),
+							PodAffinityTerm: v1.PodAffinityTerm{
+								TopologyKey: "kubernetes.io/hostname",
+								LabelSelector: &k8smetav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"harvesterhci.io/vmNamePrefix": vmNameBase,
+									},
+								},
+							},
+						},
+					},
+				},
+			}
 		}
 
 		ubuntuVM := &VMv1.VirtualMachine{
@@ -644,6 +663,23 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 				Resources: VMv1.ResourceRequirements{
 					Requests: v1.ResourceList{
 						"memory": resource.MustParse(ctx.String("memory")),
+					},
+				},
+			},
+			Affinity: &v1.Affinity{
+				PodAntiAffinity: &v1.PodAntiAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []v1.WeightedPodAffinityTerm{
+						{
+							Weight: int32(1),
+							PodAffinityTerm: v1.PodAffinityTerm{
+								TopologyKey: "kubernetes.io/hostname",
+								LabelSelector: &k8smetav1.LabelSelector{
+									MatchLabels: map[string]string{
+										"harvesterhci.io/vmNamePrefix": vmName,
+									},
+								},
+							},
+						},
 					},
 				},
 			},

@@ -365,7 +365,7 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 		}
 		logrus.Debugf("template version: %s\n", string(marshalledTemplateVersion))
 	} else {
-		templateVersion, err = fetchTemplateVersionFromInt(ctx, c, version, templateName)
+		templateVersion, err = fetchTemplateVersionFromInt(ctx.String("namespace"), c, version, templateName)
 		if err != nil {
 			return err
 		}
@@ -409,11 +409,11 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 }
 
 // fetchTemplateVersionFromInt gets the Template with the right version given the context (containing template name) and the version as an integer
-func fetchTemplateVersionFromInt(ctx *cli.Context, c *harvclient.Clientset, version int, templateName string) (*v1beta1.VirtualMachineTemplateVersion, error) {
+func fetchTemplateVersionFromInt(namespace string, c *harvclient.Clientset, version int, templateName string) (*v1beta1.VirtualMachineTemplateVersion, error) {
 
 	templateSelector := "template.harvesterhci.io/templateID=" + templateName
 
-	allTemplateVersions, err := c.HarvesterhciV1beta1().VirtualMachineTemplateVersions(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{
+	allTemplateVersions, err := c.HarvesterhciV1beta1().VirtualMachineTemplateVersions(namespace).List(context.TODO(), k8smetav1.ListOptions{
 		LabelSelector: templateSelector,
 	})
 

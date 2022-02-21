@@ -4,7 +4,7 @@
 # CLI Tool for [Harvester HCI](https://harvesterhci.io)
 Harvester CLI is a command line tool that can manage some aspects of Virtual Machine management on a remote Harvester Cluster, using simplicity principles similar to [multipass](https://multipass.run/) or [k3d](https://k3d.io).
 
-[![asciicast](Harvester CLI Demo-asciinema.png)](https://asciinema.org/a/470600)
+[![asciicast](Harvester-CLI-Demo-asciinema.png)](https://asciinema.org/a/470600)
 
 # Quick setup
 Harvester CLI needs a KUBECONFIG to access remotely the Harvester Cluster. There are two ways to achieve that:

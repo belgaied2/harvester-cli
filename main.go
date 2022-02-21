@@ -13,6 +13,8 @@ import (
 	"github.com/urfave/cli"
 )
 
+var VERSION = "dev"
+
 func main() {
 	if err := mainErr(); err != nil {
 		logrus.Fatal(err)
@@ -36,7 +38,7 @@ func mainErr() error {
 	// 	}
 	// 	return nil
 	// }
-	// app.Version = VERSION
+	app.Version = VERSION
 	app.Author = "Mohamed Belgaied Hassine"
 	app.Email = "mohamed.belgaiedhassine@gmail.com"
 	app.Flags = []cli.Flag{

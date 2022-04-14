@@ -112,7 +112,7 @@ func templateList(ctx *cli.Context) (err error) {
 
 	writer := rcmd.NewTableWriter([][]string{
 		{"NAME", "Name"},
-		{"LATEST_VERSION", "LatestVersion"},
+		{"LATEST_VERSION", "Version"},
 	},
 		ctx)
 

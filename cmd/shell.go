@@ -154,6 +154,10 @@ func getShell(ctx *cli.Context) error {
 			reader := bufio.NewReader(os.Stdin)
 			str, _ := reader.ReadString('\n')
 			fmt.Fprint(in, str)
+			if str == "exit\n" {
+				fmt.Println("logout")
+				close()
+			}
 
 		}
 

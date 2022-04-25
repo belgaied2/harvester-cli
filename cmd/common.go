@@ -24,7 +24,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	regen "github.com/zach-klippenstein/goregen"
+	"k8s.io/apimachinery/pkg/runtime"
 	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -405,4 +407,22 @@ func GetKubeClient(ctx *cli.Context) (*kubeclient.Clientset, error) {
 	}
 
 	return kubeclient.NewForConfig(clientConfig)
+}
+
+func GetRESTClientAndConfig(ctx *cli.Context) (restCl *rest.RESTClient, clientConfig *rest.Config, err error) {
+	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
+
+	clientConfig, err = clientcmd.BuildConfigFromFlags("", p)
+
+	// fmt.Println(clientConfig)
+	clientConfig.ContentConfig.NegotiatedSerializer = runtime.NewSimpleNegotiatedSerializer(runtime.SerializerInfo{})
+
+	if err != nil {
+		restCl = &rest.RESTClient{}
+		return
+	}
+
+	restCl, err = rest.UnversionedRESTClientFor(clientConfig)
+
+	return
 }

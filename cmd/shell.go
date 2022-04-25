@@ -1,17 +1,12 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"os/signal"
+	"os/exec"
 
-	"github.com/shiena/ansicolor"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"golang.org/x/crypto/ssh"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -72,104 +67,41 @@ func getShell(ctx *cli.Context) error {
 	}
 
 	ipAddress := vmi.Status.Interfaces[0].IP
-	sshKey, err := getSSHKeyFromFile(ctx.String("ssh-key"))
+	sshPort := "22"
+	// sshKey, err := getSSHKeyFromFile(ctx.String("ssh-key"))
 
 	if err != nil {
 		return err
 	}
 
-	config := ssh.ClientConfig{
-		User: ctx.String("ssh-user"),
-		Auth: []ssh.AuthMethod{
-			sshKey,
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
+	// tcpAddr := ipAddress + ":" + sshPort
+	sshConnString := "ubuntu@" + ipAddress
 
-	sshServer := ipAddress + ":" + fmt.Sprintf("%d", ctx.Int("ssh-port"))
-	conn, err := ssh.Dial("tcp", sshServer, &config)
+	cmd := exec.Command("ssh", "-i", ctx.String("ssh-key"), "-p", sshPort, sshConnString)
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	err = cmd.Run()
+
 	if err != nil {
-		panic("Failed to dial: " + err.Error())
-	}
-	defer conn.Close()
-
-	// Each ClientConn can support multiple interactive sessions,
-	// represented by a Session.
-	session, err := conn.NewSession()
-	if err != nil {
-		panic("Failed to create session: " + err.Error())
-	}
-	defer session.Close()
-
-	// Set IO
-	session.Stdout = ansicolor.NewAnsiColorWriter(os.Stdout)
-	session.Stderr = ansicolor.NewAnsiColorWriter(os.Stderr)
-	in, _ := session.StdinPipe()
-
-	// Set up terminal modes
-	// https://net-ssh.github.io/net-ssh/classes/Net/SSH/Connection/Term.html
-	// https://www.ietf.org/rfc/rfc4254.txt
-	// https://godoc.org/golang.org/x/crypto/ssh
-	// THIS IS THE TITLE
-	// https://pythonhosted.org/ANSIColors-balises/ANSIColors.html
-	modes := ssh.TerminalModes{
-		ssh.ECHO:  0, // Disable echoing
-		ssh.IGNCR: 1, // Ignore CR on input.
+		return fmt.Errorf("error during execution of ssh command: %w", err)
 	}
 
-	// Request pseudo terminal
-	//if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
-	if err := session.RequestPty("xterm-256color", 80, 40, modes); err != nil {
-		//if err := session.RequestPty("vt100", 80, 40, modes); err != nil {
-		//if err := session.RequestPty("vt220", 80, 40, modes); err != nil {
-		logrus.Fatalf("request for pseudo terminal failed: %s", err)
-	}
-
-	// Start remote shell
-	if err := session.Shell(); err != nil {
-		logrus.Fatalf("failed to start shell: %s", err)
-	}
-
-	// Handle control + C
-	cha := make(chan os.Signal, 1)
-
-	sshCtx, close := context.WithCancel(context.Background())
-
-	signal.Notify(cha, os.Interrupt)
-
-	// Go Routine waiting for OS Interrupts, and cancels the context if it gets one
-	go func() {
-		<-cha
-		fmt.Printf("\nreceived interrupt, exiting")
-		close()
-	}()
-
-	// Iterates on commands until context is cancelled from
-	for {
-
-		select {
-		case <-sshCtx.Done():
-			return nil
-		default:
-			reader := bufio.NewReader(os.Stdin)
-			str, _ := reader.ReadString('\n')
-			fmt.Fprint(in, str)
-
-		}
-
-	}
+	return nil
 
 }
 
-func getSSHKeyFromFile(file string) (ssh.AuthMethod, error) {
-	buffer, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
+// func getSSHKeyFromFile(file string) (ssh.AuthMethod, error) {
+// 	buffer, err := ioutil.ReadFile(file)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	key, err := ssh.ParsePrivateKey(buffer)
-	if err != nil {
-		return nil, err
-	}
-	return ssh.PublicKeys(key), nil
-}
+// 	key, err := ssh.ParsePrivateKey(buffer)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return ssh.PublicKeys(key), nil
+// }

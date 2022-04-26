@@ -77,7 +77,7 @@ func getShell(ctx *cli.Context) error {
 		return err
 	}
 
-	restCl, restConf, err := GetRESTClientAndConfig(ctx)
+	_, restConf, err := GetRESTClientAndConfig(ctx)
 
 	if err != nil {
 		return fmt.Errorf("error when setting up Kubernetes API client: %w", err)
@@ -128,7 +128,6 @@ func getShell(ctx *cli.Context) error {
 
 		o := &portforward.PortForwardOptions{
 			Namespace:    ctx.String("namespace"),
-			RESTClient:   restCl,
 			Config:       restConf,
 			PodName:      vmPodList.Items[0].Name,
 			Address:      []string{ipAddress},
@@ -159,15 +158,12 @@ func getShell(ctx *cli.Context) error {
 			}
 		}()
 
-		select {
-		case <-o.ReadyChannel:
-			break
-		}
+		<-o.ReadyChannel
 		err = doSSH(ctx, ipAddress, sshPort)
 		if err != nil {
 			return err
 		}
-		close(o.StopChannel)
+		// close(o.StopChannel)
 		wg.Done()
 
 	}

@@ -1,17 +1,22 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
 
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	portforwardclgo "k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 	"k8s.io/kubectl/pkg/cmd/portforward"
@@ -90,63 +95,88 @@ func getShell(ctx *cli.Context) error {
 		return fmt.Errorf("no virtual machine instance with this name exists in harvester, please check that the it is created and started")
 	}
 
-	vmPodList, err := k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
-		LabelSelector: "harvesterhci.io/vmNamePrefix=" + vmName,
-	})
-
-	if len(vmPodList.Items) == 0 {
-		vmPodList, err = k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
-			LabelSelector: "harvesterhci.io/vmName=" + vmName,
-		})
-	}
-
 	var ipAddress string
 	var sshPort string
 
 	if !ctx.Bool("pod-network") {
 		ipAddress = vmi.Status.Interfaces[0].IP
 		sshPort = "22"
+
+		err = doSSH(ctx, ipAddress, sshPort)
+		if err != nil {
+			return err
+		}
+
 	} else {
+
+		vmPodList, _ := k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
+			LabelSelector: "harvesterhci.io/vmNamePrefix=" + vmName,
+		})
+
+		if len(vmPodList.Items) == 0 {
+			vmPodList, err = k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
+				LabelSelector: "harvesterhci.io/vmName=" + vmName,
+			})
+
+			if err != nil {
+				return fmt.Errorf("unable to find pods for the VM:%s, error: %w", vmName, err)
+			}
+		}
+
+		ipAddress = "localhost"
+		sshPort = "32222"
+
 		o := &portforward.PortForwardOptions{
-			Namespace:  ctx.String("namespace"),
-			RESTClient: restCl,
-			Config:     restConf,
-			PodName:    vmPodList.Items[0].Name,
-			Address:    []string{"localhost"},
-			Ports:      []string{"2222", "22"},
-			PortForwarder: &defaultPortForwarder{
-				IOStreams: genericclioptions.IOStreams{
-					In:     os.Stdin,
-					Out:    os.Stdout,
-					ErrOut: os.Stderr,
-				},
-			},
+			Namespace:    ctx.String("namespace"),
+			RESTClient:   restCl,
+			Config:       restConf,
+			PodName:      vmPodList.Items[0].Name,
+			Address:      []string{ipAddress},
+			Ports:        []string{sshPort + ":22"},
 			PodClient:    k.CoreV1(),
 			StopChannel:  make(chan struct{}, 1),
 			ReadyChannel: make(chan struct{}),
 		}
+		var wg sync.WaitGroup
+		wg.Add(1)
 
 		fmt.Println("pod name:" + vmPodList.Items[0].Name)
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		go func() {
+			<-sigs
+			fmt.Println("Bye...")
+			close(o.StopChannel)
+			wg.Done()
+		}()
 
-		err = o.RunPortForward()
+		go func() {
+			// PortForward the pod specified from its port 9090 to the local port
+			// 8080
+			err := doPortForward(o)
+			if err != nil {
+				panic(err)
+			}
+		}()
 
-		if err != nil {
-			fmt.Println(errors.Unwrap(err))
-			return fmt.Errorf("error during setting port-forwarding for VM in pod networking %w", err)
-
+		select {
+		case <-o.ReadyChannel:
+			break
 		}
+		err = doSSH(ctx, ipAddress, sshPort)
+		if err != nil {
+			return err
+		}
+		close(o.StopChannel)
+		wg.Done()
 
-		ipAddress = "localhost"
-		sshPort = "2222"
 	}
 
-	// sshKey, err := getSSHKeyFromFile(ctx.String("ssh-key"))
+	return nil
 
-	if err != nil {
-		return err
-	}
+}
 
-	// tcpAddr := ipAddress + ":" + sshPort
+func doSSH(ctx *cli.Context, ipAddress string, sshPort string) error {
 	sshConnString := ctx.String("ssh-user") + "@" + ipAddress
 
 	cmd := exec.Command("ssh", "-i", ctx.String("ssh-key"), "-p", sshPort, sshConnString)
@@ -155,32 +185,60 @@ func getShell(ctx *cli.Context) error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
-	err = cmd.Run()
+	err := cmd.Run()
 
 	if err != nil {
 		return fmt.Errorf("error during execution of ssh command: %w", err)
 	}
-
 	return nil
-
 }
 
-type defaultPortForwarder struct {
-	genericclioptions.IOStreams
-}
-
-func (f *defaultPortForwarder) ForwardPorts(method string, url *url.URL, opts portforward.PortForwardOptions) error {
-	transport, upgrader, err := spdy.RoundTripperFor(opts.Config)
+func doPortForward(o *portforward.PortForwardOptions) error {
+	roundTripper, upgrader, err := spdy.RoundTripperFor(o.Config)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, method, url)
-	fw, err := portforwardclgo.NewOnAddresses(dialer, opts.Address, opts.Ports, opts.StopChannel, opts.ReadyChannel, f.Out, f.ErrOut)
+
+	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", o.Namespace, o.PodName)
+	hostIP := strings.TrimLeft(o.Config.Host, "htps:/")
+	serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
+
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
+	var berr, bout bytes.Buffer
+	buffErr := bufio.NewWriter(&berr)
+	buffOut := bufio.NewWriter(&bout)
+
+	fw, err := portforwardclgo.New(dialer, o.Ports, o.StopChannel, o.ReadyChannel, buffOut, buffErr)
+
 	if err != nil {
-		return err
+		return fmt.Errorf("error when creating portforwarder Object: %w", err)
 	}
-	return fw.ForwardPorts()
+
+	err = fw.ForwardPorts()
+
+	if err != nil {
+		logrus.Error(buffErr)
+		return fmt.Errorf("port forwarding failed: %w", err)
+	}
+	return nil
 }
+
+// type defaultPortForwarder struct {
+// 	genericclioptions.IOStreams
+// }
+
+// func (f *defaultPortForwarder) ForwardPorts(method string, url *url.URL, opts portforward.PortForwardOptions) error {
+// 	transport, upgrader, err := spdy.RoundTripperFor(opts.Config)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, method, url)
+// 	fw, err := portforwardclgo.NewOnAddresses(dialer, opts.Address, opts.Ports, opts.StopChannel, opts.ReadyChannel, f.Out, f.ErrOut)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return fw.ForwardPorts()
+// }
 
 // func getSSHKeyFromFile(file string) (ssh.AuthMethod, error) {
 // 	buffer, err := ioutil.ReadFile(file)

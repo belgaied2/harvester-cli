@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	regen "github.com/zach-klippenstein/goregen"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -415,14 +415,25 @@ func GetRESTClientAndConfig(ctx *cli.Context) (restCl *rest.RESTClient, clientCo
 	clientConfig, err = clientcmd.BuildConfigFromFlags("", p)
 
 	// fmt.Println(clientConfig)
-	clientConfig.ContentConfig.NegotiatedSerializer = runtime.NewSimpleNegotiatedSerializer(runtime.SerializerInfo{})
 
 	if err != nil {
+		err = fmt.Errorf("error during creation of Kube Config from File: %w", err)
 		restCl = &rest.RESTClient{}
 		return
 	}
 
-	restCl, err = rest.UnversionedRESTClientFor(clientConfig)
+	clientConfig.GroupVersion = &schema.GroupVersion{
+		Group:   "Core",
+		Version: "V1",
+	}
+
+	// restCl, err = rest.RESTClientFor(clientConfig)
+	restCl = &rest.RESTClient{}
+
+	if err != nil {
+		err = fmt.Errorf("error during creation of REST Client: %w", err)
+		restCl = &rest.RESTClient{}
+	}
 
 	return
 }

@@ -80,7 +80,7 @@ func getShell(ctx *cli.Context) error {
 		return err
 	}
 
-	_, restConf, err := GetRESTClientAndConfig(ctx)
+	restConf, err := GetRESTClientAndConfig(ctx)
 
 	if err != nil {
 		return fmt.Errorf("error when setting up Kubernetes API client: %w", err)
@@ -273,33 +273,3 @@ func doPortForward(o *portforward.PortForwardOptions) error {
 	}
 	return nil
 }
-
-// type defaultPortForwarder struct {
-// 	genericclioptions.IOStreams
-// }
-
-// func (f *defaultPortForwarder) ForwardPorts(method string, url *url.URL, opts portforward.PortForwardOptions) error {
-// 	transport, upgrader, err := spdy.RoundTripperFor(opts.Config)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, method, url)
-// 	fw, err := portforwardclgo.NewOnAddresses(dialer, opts.Address, opts.Ports, opts.StopChannel, opts.ReadyChannel, f.Out, f.ErrOut)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return fw.ForwardPorts()
-// }
-
-// func getSSHKeyFromFile(file string) (ssh.AuthMethod, error) {
-// 	buffer, err := ioutil.ReadFile(file)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	key, err := ssh.ParsePrivateKey(buffer)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return ssh.PublicKeys(key), nil
-// }

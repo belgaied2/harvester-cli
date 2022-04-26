@@ -409,7 +409,7 @@ func GetKubeClient(ctx *cli.Context) (*kubeclient.Clientset, error) {
 	return kubeclient.NewForConfig(clientConfig)
 }
 
-func GetRESTClientAndConfig(ctx *cli.Context) (restCl *rest.RESTClient, clientConfig *rest.Config, err error) {
+func GetRESTClientAndConfig(ctx *cli.Context) (clientConfig *rest.Config, err error) {
 	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
 
 	clientConfig, err = clientcmd.BuildConfigFromFlags("", p)
@@ -418,7 +418,6 @@ func GetRESTClientAndConfig(ctx *cli.Context) (restCl *rest.RESTClient, clientCo
 
 	if err != nil {
 		err = fmt.Errorf("error during creation of Kube Config from File: %w", err)
-		restCl = &rest.RESTClient{}
 		return
 	}
 
@@ -428,11 +427,9 @@ func GetRESTClientAndConfig(ctx *cli.Context) (restCl *rest.RESTClient, clientCo
 	}
 
 	// restCl, err = rest.RESTClientFor(clientConfig)
-	restCl = &rest.RESTClient{}
 
 	if err != nil {
 		err = fmt.Errorf("error during creation of REST Client: %w", err)
-		restCl = &rest.RESTClient{}
 	}
 
 	return

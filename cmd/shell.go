@@ -123,6 +123,10 @@ func getShell(ctx *cli.Context) error {
 		ipAddress = vmi.Status.Interfaces[networkNum].IP
 		sshPort = "22"
 
+		if ipAddress == "" {
+			return fmt.Errorf("the designated VM does not have a valid IP Address")
+		}
+
 		err = doSSH(ctx, ipAddress, sshPort)
 		if err != nil {
 			return err

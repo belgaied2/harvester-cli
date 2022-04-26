@@ -68,6 +68,8 @@ func ShellCommand() cli.Command {
 	}
 }
 
+// getShell implements the command `shell`
+// It accepts only one argument, that should be the VM name
 func getShell(ctx *cli.Context) error {
 	if len(ctx.Args()) != 1 {
 		return fmt.Errorf("one and only one argument is accepted for this command, and that is the vm name")
@@ -138,6 +140,10 @@ func getShell(ctx *cli.Context) error {
 
 }
 
+// networkType finds out to which network interface to connect to the VM
+// if a bridge network interface exists, it will be returned
+// if no bridge network interface exists, but a Pod Network interface does, it will use the last one it encounters
+// if no interface could be defined, it throws an error
 func networkType(vmName string, c *versioned.Clientset, ctx *cli.Context) (string, int, error) {
 
 	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, v1.GetOptions{})
@@ -162,12 +168,17 @@ func networkType(vmName string, c *versioned.Clientset, ctx *cli.Context) (strin
 	return "", 0, fmt.Errorf("no valid network type found for VM: %s", vmName)
 }
 
+// getFreeLocalPort finds a random free port on the local machine as a source to the port forwarding.
 func getFreeLocalPort() (string, error) {
 
 	//TODO: Change implementation
 	return "32222", nil
 }
 
+// sshOverPortFoward contains the steps to make an SSH connection to a VM that is on the PodNetwork and not on the bridge network.
+// It first finds out what is the Pod that is driving the VM
+// Then, it populates the PortForwardOptions struct that is used as a container for all the parameters necessary to port forward using Kubernetes API
+// Finally, it relies on Go Routines to open the Port forwarding tunnel and do the actual SSH connection
 func sshOverPortForward(k *kubernetes.Clientset, ctx *cli.Context, vmName string, sshPort string, restConf *rest.Config) error {
 	var err error
 	vmPodList, _ := k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
@@ -227,6 +238,8 @@ func sshOverPortForward(k *kubernetes.Clientset, ctx *cli.Context, vmName string
 	return nil
 }
 
+// doSSH implements the actual SSHing into the VM. For simplicity's sake, it relies on the system's SSH command, usually present on all major OSes
+// Linux, Windows, MacOS
 func doSSH(ctx *cli.Context, ipAddress string, sshPort string) error {
 	sshConnString := ctx.String("ssh-user") + "@" + ipAddress
 
@@ -244,6 +257,8 @@ func doSSH(ctx *cli.Context, ipAddress string, sshPort string) error {
 	return nil
 }
 
+// doPortForward implements the actual Port forwarding before an SSH connection can be done
+// it relies on the content of the PortForwardOptions struct defined in the upstream kubectl project
 func doPortForward(o *portforward.PortForwardOptions) error {
 	roundTripper, upgrader, err := spdy.RoundTripperFor(o.Config)
 	if err != nil {

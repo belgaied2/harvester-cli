@@ -97,6 +97,7 @@ func TemplateCommand() cli.Command {
 	}
 }
 
+// templateList implements the subcommand `template list`
 func templateList(ctx *cli.Context) (err error) {
 	c, err := GetHarvesterClient(ctx)
 
@@ -172,17 +173,6 @@ func templateShow(ctx *cli.Context) error {
 		return fmt.Errorf("error during querying VM Template, %w", err)
 	}
 
-	// matchingVMTemplate.ManagedFields = []k8smetav1.ManagedFieldsEntry{}
-	// matchingVMTemplate.OwnerReferences = []k8smetav1.OwnerReference{}
-
-	// scheme := runtime.NewScheme()
-	// yamlSerializer := json.NewSerializerWithOptions(json.DefaultMetaFactory, scheme, scheme, json.SerializerOptions{Yaml: true, Strict: false})
-
-	// err = yamlSerializer.Encode(matchingVMTemplate, os.Stdout)
-	// if err != nil {
-	// 	return fmt.Errorf("failed during encoding an object to YAML: %w", err)
-	// }
-
 	imageName, err := getImageName(matchingVMTemplate, c)
 
 	if err != nil {
@@ -225,6 +215,7 @@ func templateShow(ctx *cli.Context) error {
 
 }
 
+// mapVolumeData returns an array of Volume objects that need to be added to the VirtualMachineInstanceTemplate when creating the VM object
 func mapVolumeData(ctx *cli.Context, matchingVMTemplate *v1beta1.VirtualMachineTemplateVersion) (volumes []Volume, err error) {
 
 	for _, origVolume := range matchingVMTemplate.Spec.VM.Spec.Template.Spec.Volumes {
@@ -274,6 +265,7 @@ func mapVolumeData(ctx *cli.Context, matchingVMTemplate *v1beta1.VirtualMachineT
 	return
 }
 
+// getCloudInitDataFromSecret will query a secret to read Cloud Init Data to include in the VM Spec
 func getCloudInitDataFromSecret(ctx *cli.Context, secretName, namespace, dataType string) (data string, err error) {
 	c, err := GetKubeClient(ctx)
 
@@ -294,6 +286,7 @@ func getCloudInitDataFromSecret(ctx *cli.Context, secretName, namespace, dataTyp
 
 }
 
+// getPvcSizeFromMatchingAnnotation finds out the size of PVC in the template annotations, this is necessary to create a VM with the right volume size
 func getPvcSizeFromMatchingAnnotation(claimName string, matchingVMTemplate *v1beta1.VirtualMachineTemplateVersion) (size string, err error) {
 	claims, err := getPvcFromAnnotation(matchingVMTemplate)
 
@@ -314,6 +307,7 @@ func getPvcSizeFromMatchingAnnotation(claimName string, matchingVMTemplate *v1be
 	return
 }
 
+// getImageName extracts the VM image name from the template
 func getImageName(matchingVMTemplate *v1beta1.VirtualMachineTemplateVersion, c *harvclient.Clientset) (image string, err error) {
 	claimObjectList, err1 := getPvcFromAnnotation(matchingVMTemplate)
 	image = ""
@@ -348,6 +342,7 @@ func getImageName(matchingVMTemplate *v1beta1.VirtualMachineTemplateVersion, c *
 	return
 }
 
+// getPvcFromAnnotation finds out the PVC data in the template that will be used within the VM Spec.
 func getPvcFromAnnotation(matchingVMTemplate *v1beta1.VirtualMachineTemplateVersion) ([]v1.PersistentVolumeClaim, error) {
 	claimAnnot := matchingVMTemplate.Spec.VM.ObjectMeta.Annotations[templateClaimTemp]
 
@@ -358,6 +353,7 @@ func getPvcFromAnnotation(matchingVMTemplate *v1beta1.VirtualMachineTemplateVers
 	return claimObjectList, err1
 }
 
+// mapInterfaceData extracts an array of Network Interfaces from the template
 func mapInterfaceData(vmTemplateVersion *v1beta1.VirtualMachineTemplateVersion) []Interface {
 	result := []Interface{}
 	origInterfaces := vmTemplateVersion.Spec.VM.Spec.Template.Spec.Domain.Devices.Interfaces

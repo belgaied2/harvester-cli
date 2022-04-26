@@ -24,7 +24,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	regen "github.com/zach-klippenstein/goregen"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -304,10 +303,12 @@ func defaultAction(fn func(ctx *cli.Context) error) func(ctx *cli.Context) error
 	}
 }
 
+// SplitOnColon splits an input string into an array of strings using column as a separator
 func SplitOnColon(s string) []string {
 	return strings.Split(s, ":")
 }
 
+// parseClusterAndProjectID comes from upstream Rancher CLI code and makes it possible to parse the cluster and project id from the tuples that come from the Rancher API
 func parseClusterAndProjectID(id string) (string, string, error) {
 	// Validate id
 	// Examples:
@@ -339,6 +340,7 @@ func getClusterNames(ctx *cli.Context, c *cliclient.MasterClient) (map[string]st
 	return clusterNames, nil
 }
 
+// baseListOptions comes from upstream Rancher CLI, it returns an empty ListOpts pointer
 func baseListOpts() *ntypes.ListOpts {
 	return &ntypes.ListOpts{
 		Filters: map[string]interface{}{
@@ -348,6 +350,7 @@ func baseListOpts() *ntypes.ListOpts {
 	}
 }
 
+// defaultListOpts comes from upstream Rancher CLI code, it implements a way to handle lists of resources
 func defaultListOpts(ctx *cli.Context) *ntypes.ListOpts {
 	listOpts := baseListOpts()
 	if ctx != nil && !ctx.Bool("all") {
@@ -397,6 +400,7 @@ func GetHarvesterClient(ctx *cli.Context) (*harvclient.Clientset, error) {
 
 }
 
+// GetKubeClient creates a Vanilla Kubernetes Client to query the Kubernetes-native API Objects
 func GetKubeClient(ctx *cli.Context) (*kubeclient.Clientset, error) {
 	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
 
@@ -409,27 +413,15 @@ func GetKubeClient(ctx *cli.Context) (*kubeclient.Clientset, error) {
 	return kubeclient.NewForConfig(clientConfig)
 }
 
+// GetRESTClientAndConfig creates a *rest.Config pointer from a KUBECONFIG file
 func GetRESTClientAndConfig(ctx *cli.Context) (clientConfig *rest.Config, err error) {
 	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
 
 	clientConfig, err = clientcmd.BuildConfigFromFlags("", p)
 
-	// fmt.Println(clientConfig)
-
 	if err != nil {
 		err = fmt.Errorf("error during creation of Kube Config from File: %w", err)
 		return
-	}
-
-	clientConfig.GroupVersion = &schema.GroupVersion{
-		Group:   "Core",
-		Version: "V1",
-	}
-
-	// restCl, err = rest.RESTClientFor(clientConfig)
-
-	if err != nil {
-		err = fmt.Errorf("error during creation of REST Client: %w", err)
 	}
 
 	return

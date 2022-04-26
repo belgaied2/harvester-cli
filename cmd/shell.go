@@ -14,9 +14,12 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/harvester/harvester/pkg/generated/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	portforwardclgo "k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 	"k8s.io/kubectl/pkg/cmd/portforward"
@@ -98,8 +101,26 @@ func getShell(ctx *cli.Context) error {
 	var ipAddress string
 	var sshPort string
 
-	if !ctx.Bool("pod-network") {
-		ipAddress = vmi.Status.Interfaces[0].IP
+	netType, networkNum, err := networkType(vmName, c, ctx)
+
+	if err != nil {
+		return fmt.Errorf("error determining VM's network type: %w", err)
+	}
+
+	if netType == "pod" || ctx.Bool("pod-network") {
+
+		sshPort, err = getFreeLocalPort()
+		if err != nil {
+			return fmt.Errorf("unable to find free local port: %w", err)
+		}
+
+		err = sshOverPortForward(k, ctx, vmName, sshPort, restConf)
+		if err != nil {
+			return fmt.Errorf("ssh over Port Forwarding failed: %w", err)
+		}
+
+	} else {
+		ipAddress = vmi.Status.Interfaces[networkNum].IP
 		sshPort = "22"
 
 		err = doSSH(ctx, ipAddress, sshPort)
@@ -107,69 +128,99 @@ func getShell(ctx *cli.Context) error {
 			return err
 		}
 
-	} else {
-
-		vmPodList, _ := k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
-			LabelSelector: "harvesterhci.io/vmNamePrefix=" + vmName,
-		})
-
-		if len(vmPodList.Items) == 0 {
-			vmPodList, err = k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
-				LabelSelector: "harvesterhci.io/vmName=" + vmName,
-			})
-
-			if err != nil {
-				return fmt.Errorf("unable to find pods for the VM:%s, error: %w", vmName, err)
-			}
-		}
-
-		ipAddress = "localhost"
-		sshPort = "32222"
-
-		o := &portforward.PortForwardOptions{
-			Namespace:    ctx.String("namespace"),
-			Config:       restConf,
-			PodName:      vmPodList.Items[0].Name,
-			Address:      []string{ipAddress},
-			Ports:        []string{sshPort + ":22"},
-			PodClient:    k.CoreV1(),
-			StopChannel:  make(chan struct{}, 1),
-			ReadyChannel: make(chan struct{}),
-		}
-		var wg sync.WaitGroup
-		wg.Add(1)
-
-		fmt.Println("pod name:" + vmPodList.Items[0].Name)
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-		go func() {
-			<-sigs
-			fmt.Println("Bye...")
-			close(o.StopChannel)
-			wg.Done()
-		}()
-
-		go func() {
-			// PortForward the pod specified from its port 9090 to the local port
-			// 8080
-			err := doPortForward(o)
-			if err != nil {
-				panic(err)
-			}
-		}()
-
-		<-o.ReadyChannel
-		err = doSSH(ctx, ipAddress, sshPort)
-		if err != nil {
-			return err
-		}
-		// close(o.StopChannel)
-		wg.Done()
-
 	}
 
 	return nil
 
+}
+
+func networkType(vmName string, c *versioned.Clientset, ctx *cli.Context) (string, int, error) {
+
+	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, v1.GetOptions{})
+	if err != nil {
+		return "", 0, fmt.Errorf("error querying VM object: %w", err)
+	}
+	onlyPodNetwork := false
+	podNetworkNumber := 0
+
+	for i, network := range vm.Spec.Template.Spec.Networks {
+		if network.Multus != nil {
+			return "bridge", i, nil
+		} else if network.Pod != nil {
+			onlyPodNetwork = true
+			podNetworkNumber = i
+		}
+	}
+	if onlyPodNetwork {
+		return "pod", podNetworkNumber, nil
+	}
+
+	return "", 0, fmt.Errorf("no valid network type found for VM: %s", vmName)
+}
+
+func getFreeLocalPort() (string, error) {
+
+	//TODO: Change implementation
+	return "32222", nil
+}
+
+func sshOverPortForward(k *kubernetes.Clientset, ctx *cli.Context, vmName string, sshPort string, restConf *rest.Config) error {
+	var err error
+	vmPodList, _ := k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
+		LabelSelector: "harvesterhci.io/vmNamePrefix=" + vmName,
+	})
+
+	if len(vmPodList.Items) == 0 {
+		vmPodList, err = k.CoreV1().Pods(ctx.String("namespace")).List(context.TODO(), v1.ListOptions{
+			LabelSelector: "harvesterhci.io/vmName=" + vmName,
+		})
+
+		if err != nil {
+			return fmt.Errorf("unable to find pods for the VM:%s, error: %w", vmName, err)
+		}
+	}
+
+	ipAddress := "localhost"
+
+	o := &portforward.PortForwardOptions{
+		Namespace:    ctx.String("namespace"),
+		Config:       restConf,
+		PodName:      vmPodList.Items[0].Name,
+		Address:      []string{ipAddress},
+		Ports:        []string{sshPort + ":22"},
+		PodClient:    k.CoreV1(),
+		StopChannel:  make(chan struct{}, 1),
+		ReadyChannel: make(chan struct{}),
+	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	fmt.Println("pod name:" + vmPodList.Items[0].Name)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		fmt.Println("Bye...")
+		close(o.StopChannel)
+		wg.Done()
+	}()
+
+	go func() {
+
+		err := doPortForward(o)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	<-o.ReadyChannel
+	err = doSSH(ctx, ipAddress, sshPort)
+	if err != nil {
+		return err
+	}
+
+	wg.Done()
+	return nil
 }
 
 func doSSH(ctx *cli.Context, ipAddress string, sshPort string) error {

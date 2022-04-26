@@ -38,7 +38,7 @@ If you consider the behavior to be problematic, please suggest a detailed propos
 At the moment, features implemented in Harvester CLI are:
 - Automatic Harvester Configuration Download from Rancher API
 - VM Lifecycle Management: List, Create, Delete, Start, Stop, Restart
-- Direct Shell access to VMs
+- Direct Shell access to VMs -- *requires presence of the SSH utility on the system, usually the case in most OSes out of the box*
 
 Many aspects might be implemented in the future, like Network Management or VM Image Management, please feel free to contribute or suggest features by creating issues.
 
@@ -209,8 +209,13 @@ OPTIONS:
 
 ## Automatic Configuration download from Rancher
 In order to get Harvester's Kubeconfig to be able to manage your particular Harvester Cluster, you have :
-- The manual way: get the KUBECONFIG file from the underlying RKE2 Cluster and put it on your client, then reference it in the `harvester` commands 
-- Download the KUBECONFIG file from Rancher using a Rancher API token: this is done using the `harvester get-config` command.
+- The manual way: get the KUBECONFIG file from the underlying RKE2 Cluster and put it on your client, then reference it in the `harvester` commands using:
+  - By default, the location `$HOME/.harvester/config`
+  - the flag `--harvester-config` to give, inline, a path to a valid HARVESTER-specific KUBECONFIG file 
+  - the environment variable `HARVESTER_CONFIG`
+- Download the KUBECONFIG file from Rancher using a Rancher API token: this is done using the `harvester get-config` command. This procedure has been improved and gives the possibility to use the `login` command which will, thanks to a Rancher API Token, login to a Rancher Management Server where Harvester is imported.
+
+Please keep in mind that, until now, the Harvester CLI program does not check if the given cluster is an actual Harvester Cluster, or which version it has.
 
 *TODO* : Improve this section
 

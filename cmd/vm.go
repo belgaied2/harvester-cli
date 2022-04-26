@@ -231,7 +231,13 @@ func vmLs(ctx *cli.Context) error {
 
 	for _, vm := range vmList.Items {
 
-		running := *vm.Spec.Running
+		var running bool
+		if vm.Spec.Running == nil {
+			running = false
+		} else {
+			running = *vm.Spec.Running
+		}
+
 		var state string
 		if running {
 			state = "Running"

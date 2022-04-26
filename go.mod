@@ -67,5 +67,6 @@ require (
 	k8s.io/api v0.22.3
 	k8s.io/apimachinery v0.22.3
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kubectl v0.23.6
 	kubevirt.io/client-go v0.45.0
 )

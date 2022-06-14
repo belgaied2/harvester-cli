@@ -231,19 +231,7 @@ func vmLs(ctx *cli.Context) error {
 
 	for _, vm := range vmList.Items {
 
-		var running bool
-		if vm.Spec.Running == nil {
-			running = false
-		} else {
-			running = *vm.Spec.Running
-		}
-
-		var state string
-		if running {
-			state = "Running"
-		} else {
-			state = "Not Running"
-		}
+		state := string(vm.Status.PrintableStatus)
 
 		var IP string
 		if vmiMap[vm.Name].Status.Interfaces == nil {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -422,6 +423,29 @@ func GetRESTClientAndConfig(ctx *cli.Context) (clientConfig *rest.Config, err er
 	if err != nil {
 		err = fmt.Errorf("error during creation of Kube Config from File: %w", err)
 		return
+	}
+
+	return
+}
+
+func GetRancherTokenMap(ctx *cli.Context) (tokenMap map[string]string, configMap map[string]*config.ServerConfig, err error) {
+	rancherConfig, err := loadConfig(ctx)
+
+	if err != nil {
+		return
+	}
+
+	rancherServers := rancherConfig.Servers
+	for _, ranchConfig := range rancherServers {
+		serverURL, err := url.Parse(ranchConfig.URL)
+		if err != nil {
+			return tokenMap, configMap, err
+		}
+		tokenMap = make(map[string]string)
+		tokenMap[serverURL.Host] = ranchConfig.TokenKey
+		configMap = make(map[string]*config.ServerConfig)
+		configMap[serverURL.Host] = ranchConfig
+
 	}
 
 	return

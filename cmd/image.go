@@ -2,13 +2,25 @@ package cmd
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io"
+	"io/fs"
+	"os"
+	"strconv"
 	"strings"
+
+	"net/http"
+	"net/url"
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	rcmd "github.com/rancher/cli/cmd"
+	"github.com/rancher/cli/config"
 	"github.com/urfave/cli"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type ImageData struct {
@@ -116,12 +128,90 @@ func imageCreate(ctx *cli.Context) (err error) {
 
 	vmImageDisplayName := ctx.Args()[0]
 	source := ctx.String("source")
+	sourceType := "download"
 	if !strings.HasPrefix(source, "http") { //If the upload option is implemented, this will need to change!
-		err = fmt.Errorf("source flag is not a valid http link")
-	}
+		var fileInf fs.FileInfo
+		if fileInf, err = os.Stat(source); err == nil {
+			filesize := fileInf.Size()
+			sourceType = "upload"
+			var vmImageCreateName string
+			vmImageCreateName, err = createImageObjectInAPI(ctx, vmImageDisplayName, sourceType, source)
+			if err != nil {
+				return
+			}
+			var rancherServerConfig *config.ServerConfig
+			var harvesterURL string
+			rancherServerConfig, harvesterURL, err = getHarvesterAPIFromConfig(ctx)
 
-	if err != nil {
-		return
+			if err != nil {
+				return
+			}
+
+			urlToSendFile := harvesterURL + "/v1/harvester/harvesterhci.io.virtualmachineimages/" + ctx.String("namespace") + "/" + vmImageCreateName + "/action=upload&size=" + strconv.FormatInt(filesize, 10)
+			var fileReader io.Reader
+			fileReader, err = os.Open(source)
+			if err != nil {
+				return
+			}
+
+			var req *http.Request
+
+			req, err = http.NewRequest("POST", urlToSendFile, fileReader)
+			if err != nil {
+				return
+			}
+
+			rootCAs, err := x509.SystemCertPool()
+			if err != nil {
+				return err
+			}
+			pemBlock, _ := pem.Decode([]byte(rancherServerConfig.CACerts))
+			ownCert, err := x509.ParseCertificate(pemBlock.Bytes)
+			if err != nil {
+				return fmt.Errorf("invalid CA certification in Rancher configuration, %w", err)
+			}
+
+			rootCAs.AddCert(ownCert)
+
+			req.Header.Add("Authorization", "Bearer "+rancherServerConfig.TokenKey)
+			tr := &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: rootCAs,
+				},
+			}
+			httpClient := &http.Client{Transport: tr}
+
+			var resp *http.Response
+			resp, err = httpClient.Do(req)
+
+			if err != nil {
+				return err
+			}
+
+			if resp.Status == "200 OK" {
+				return nil
+			} else {
+				return fmt.Errorf("uploading image file to harvester was not successful")
+			}
+
+		} else {
+
+			err = fmt.Errorf("source flag is neither a valid http link and nor a valid filepath")
+			return
+
+		}
+
+	}
+	_, err = createImageObjectInAPI(ctx, vmImageDisplayName, sourceType, source)
+
+	return
+
+}
+
+func createImageObjectInAPI(ctx *cli.Context, vmImageDisplayName string, sourceType string, source string) (vmImageCreateName string, err error) {
+
+	if sourceType == "upload" {
+		source = ""
 	}
 
 	vmImage := &v1beta1.VirtualMachineImage{
@@ -131,7 +221,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 		Spec: v1beta1.VirtualMachineImageSpec{
 			Description: ctx.String("description"),
 			DisplayName: vmImageDisplayName,
-			SourceType:  "download", //If the upload option is implemented, this will need to change!
+			SourceType:  sourceType,
 			URL:         source,
 		},
 	}
@@ -142,7 +232,47 @@ func imageCreate(ctx *cli.Context) (err error) {
 		return
 	}
 
-	_, err = c.HarvesterhciV1beta1().VirtualMachineImages(ctx.String("namespace")).Create(context.TODO(), vmImage, k8smetav1.CreateOptions{})
+	vmImageCreated, err := c.HarvesterhciV1beta1().VirtualMachineImages(ctx.String("namespace")).Create(context.TODO(), vmImage, k8smetav1.CreateOptions{})
 
+	if err != nil {
+		return
+	}
+
+	vmImageCreateName = vmImageCreated.Name
 	return
+}
+
+func getHarvesterAPIFromConfig(ctx *cli.Context) (serverConfig *config.ServerConfig, harvesterKubeAPIServerURL string, err error) {
+
+	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
+	restConfig, err := clientcmd.BuildConfigFromFlags("", p)
+
+	if err != nil {
+		return
+	}
+
+	harvesterKubeAPIServerURL = restConfig.Host
+	u, err := url.Parse(harvesterKubeAPIServerURL)
+
+	if err != nil {
+		return
+	}
+
+	harvesterKubeAPIServerHost := u.Host
+
+	tokenMap, configMap, err := GetRancherTokenMap(ctx)
+
+	if err != nil {
+		return
+	}
+
+	var ok bool = false
+
+	if _, ok = tokenMap[harvesterKubeAPIServerHost]; ok {
+		serverConfig = configMap[harvesterKubeAPIServerHost]
+		return
+	} else {
+		return nil, "", fmt.Errorf("not able to determine harvester API URL")
+	}
+
 }

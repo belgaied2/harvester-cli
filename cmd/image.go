@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -8,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"mime/multipart"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -155,8 +158,27 @@ func imageCreate(ctx *cli.Context) (err error) {
 			}
 
 			var req *http.Request
+			multipartBody := &bytes.Buffer{}
+			writer := multipart.NewWriter(multipartBody)
+			var part io.Writer
+			part, err = writer.CreateFormFile("file", filepath.Base(source))
 
-			req, err = http.NewRequest("POST", urlToSendFile, fileReader)
+			if err != nil {
+				return
+			}
+
+			_, err = io.Copy(part, fileReader)
+
+			if err != nil {
+				return
+			}
+
+			err = writer.Close()
+			if err != nil {
+				return
+			}
+
+			req, err = http.NewRequest("POST", urlToSendFile, multipartBody)
 			if err != nil {
 				return
 			}
@@ -174,6 +196,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 			rootCAs.AddCert(ownCert)
 
 			req.Header.Add("Authorization", "Bearer "+rancherServerConfig.TokenKey)
+			req.Header.Set("Content-Type", writer.FormDataContentType())
 			tr := &http.Transport{
 				TLSClientConfig: &tls.Config{
 					RootCAs: rootCAs,

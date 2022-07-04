@@ -137,11 +137,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 		if fileInf, err = os.Stat(source); err == nil {
 			filesize := fileInf.Size()
 			sourceType = "upload"
-			var vmImageCreateName string
-			vmImageCreateName, err = createImageObjectInAPI(ctx, vmImageDisplayName, sourceType, source)
-			if err != nil {
-				return
-			}
+
 			var rancherServerConfig *config.ServerConfig
 			var harvesterURL string
 			rancherServerConfig, harvesterURL, err = getHarvesterAPIFromConfig(ctx)
@@ -150,7 +146,6 @@ func imageCreate(ctx *cli.Context) (err error) {
 				return
 			}
 
-			urlToSendFile := harvesterURL + "/v1/harvester/harvesterhci.io.virtualmachineimages/" + ctx.String("namespace") + "/" + vmImageCreateName + "/action=upload&size=" + strconv.FormatInt(filesize, 10)
 			var fileReader io.Reader
 			fileReader, err = os.Open(source)
 			if err != nil {
@@ -161,7 +156,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 			multipartBody := &bytes.Buffer{}
 			writer := multipart.NewWriter(multipartBody)
 			var part io.Writer
-			part, err = writer.CreateFormFile("file", filepath.Base(source))
+			part, err = writer.CreateFormFile("chunk", filepath.Base(source))
 
 			if err != nil {
 				return
@@ -173,22 +168,25 @@ func imageCreate(ctx *cli.Context) (err error) {
 				return
 			}
 
-			err = writer.Close()
+			var vmImageCreateName string
+			vmImageCreateName, err = createImageObjectInAPI(ctx, vmImageDisplayName, sourceType, source)
 			if err != nil {
 				return
 			}
+			urlToSendFile := harvesterURL + "/v1/harvester/harvesterhci.io.virtualmachineimages/" + ctx.String("namespace") + "/" + vmImageCreateName + "/action=upload&size=" + strconv.FormatInt(filesize, 10)
 
 			req, err = http.NewRequest("POST", urlToSendFile, multipartBody)
 			if err != nil {
 				return
 			}
-
-			rootCAs, err := x509.SystemCertPool()
+			var rootCAs *x509.CertPool
+			rootCAs, err = x509.SystemCertPool()
 			if err != nil {
 				return err
 			}
 			pemBlock, _ := pem.Decode([]byte(rancherServerConfig.CACerts))
-			ownCert, err := x509.ParseCertificate(pemBlock.Bytes)
+			var ownCert *x509.Certificate
+			ownCert, err = x509.ParseCertificate(pemBlock.Bytes)
 			if err != nil {
 				return fmt.Errorf("invalid CA certification in Rancher configuration, %w", err)
 			}
@@ -209,6 +207,11 @@ func imageCreate(ctx *cli.Context) (err error) {
 
 			if err != nil {
 				return err
+			}
+
+			err = writer.Close()
+			if err != nil {
+				return
 			}
 
 			if resp.Status == "200 OK" {

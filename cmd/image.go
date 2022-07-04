@@ -168,12 +168,17 @@ func imageCreate(ctx *cli.Context) (err error) {
 				return
 			}
 
+			err = writer.Close()
+			if err != nil {
+				return
+			}
+
 			var vmImageCreateName string
 			vmImageCreateName, err = createImageObjectInAPI(ctx, vmImageDisplayName, sourceType, source)
 			if err != nil {
 				return
 			}
-			urlToSendFile := harvesterURL + "/v1/harvester/harvesterhci.io.virtualmachineimages/" + ctx.String("namespace") + "/" + vmImageCreateName + "/action=upload&size=" + strconv.FormatInt(filesize, 10)
+			urlToSendFile := harvesterURL + "/v1/harvester/harvesterhci.io.virtualmachineimages/" + ctx.String("namespace") + "/" + vmImageCreateName + "?action=upload&size=" + strconv.FormatInt(filesize, 10)
 
 			req, err = http.NewRequest("POST", urlToSendFile, multipartBody)
 			if err != nil {
@@ -209,15 +214,10 @@ func imageCreate(ctx *cli.Context) (err error) {
 				return err
 			}
 
-			err = writer.Close()
-			if err != nil {
-				return
-			}
-
 			if resp.Status == "200 OK" {
 				return nil
 			} else {
-				return fmt.Errorf("uploading image file to harvester was not successful")
+				return fmt.Errorf("uploading image file to harvester was not successful: %s", resp.Body)
 			}
 
 		} else {

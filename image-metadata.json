@@ -63,13 +63,13 @@
         "build": "current"
       }
     ],
-    "sles": {},
-    "sleMicro": {},
-    "rhel": {},
-    "centos": {},
-    "fedora": {},
-    "rockyLinux": {},
-    "libertyLinux": {},
-    "arch": {}
+    "sles": [],
+    "sleMicro": [],
+    "rhel": [],
+    "centos": [],
+    "fedora": [],
+    "rockyLinux": [],
+    "libertyLinux": [],
+    "arch": []
   } 
 }

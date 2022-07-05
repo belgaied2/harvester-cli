@@ -1,0 +1,75 @@
+{
+  "HarvesterImageCatalog": {
+    "ubuntu": [
+      {
+        "version": "18.04",
+        "shortName": "bionic",
+        "url": "https://cloud-images.ubuntu.com/bionic/20220615/bionic-server-cloudimg-amd64.img",
+        "build": "20220615"
+      }, 
+      {
+        "version": "20.04",
+        "shortName": "focal",
+        "url": "https://cloud-images.ubuntu.com/focal/20220627.1/focal-server-cloudimg-amd64.img",
+        "build": "20220627.1"
+      }, 
+      {
+        "version": "21.10",
+        "shortName": "impish",
+        "url": "https://cloud-images.ubuntu.com/impish/20220616/impish-server-cloudimg-amd64.img",
+        "build": "20220616"
+      }, 
+      {
+        "version": "22.04",
+        "shortName": "jammy",
+        "url": "https://cloud-images.ubuntu.com/jammy/20220622/jammy-server-cloudimg-amd64.img",
+        "build": "20220622"
+      }
+      , 
+      {
+        "version": "22.10",
+        "shortName": "kinetic",
+        "url": "https://cloud-images.ubuntu.com/kinetic/20220625/kinetic-server-cloudimg-amd64.img",
+        "build": "20220625"
+      }
+    ],
+    "leap": [
+      {
+        "version": "15.4",
+        "shortName": "JeOS",
+        "url": "https://download.opensuse.org/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-OpenStack-Cloud.qcow2",
+        "build": "15.4"
+      },
+      {
+        "version": "15.3",
+        "shortName": "JeOS",
+        "url": "https://download.opensuse.org/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-OpenStack-Cloud.qcow2",
+        "build": "15.3"
+      }
+    ],
+    "tumbleweed": [
+      {
+        "version": "current",
+        "shortName": "tumbleweed-JeOS",
+        "url": "https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-JeOS.x86_64-OpenStack-Cloud.qcow2",
+        "build": "current"
+      }
+    ],
+    "microOS": [
+      {
+        "version": "current",
+        "shortName": "MicroOS",
+        "url": "https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2",
+        "build": "current"
+      }
+    ],
+    "sles": {},
+    "sleMicro": {},
+    "rhel": {},
+    "centos": {},
+    "fedora": {},
+    "rockyLinux": {},
+    "libertyLinux": {},
+    "arch": {}
+  } 
+}

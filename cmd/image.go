@@ -1,26 +1,28 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"io/fs"
 	"mime/multipart"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"net/http"
-	"net/url"
-
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/rancher/cli/config"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -32,6 +34,28 @@ type ImageData struct {
 	SourceType string
 	Url        string
 }
+
+type CatalogEntry struct {
+	Id        int64  `json:"id,omitempty"`
+	ShortName string `json:"shortName"`
+	Version   string `json:"version"`
+	Url       string `json:"url"`
+	Build     string `json:"build"`
+}
+
+type Catalog struct {
+	HarvesterImageCatalog map[string][]CatalogEntry `json:"HarvesterImageCatalog"`
+}
+
+type Os struct {
+	Id             int64
+	Name           string
+	NumberOfImages string
+}
+
+const (
+	defaultCatalogSource = "https://raw.githubusercontent.com/belgaied2/harvester-cli/feature-image-upload/image-metadata.json"
+)
 
 // TemplateCommand defines the CLI command that lists VM templates in Harvester
 func ImageCommand() cli.Command {
@@ -66,7 +90,7 @@ func ImageCommand() cli.Command {
 					nsFlag,
 					cli.StringFlag{
 						Name:     "source",
-						Usage:    "Location from which the image will be put into Harvester, this should be an HTTP(S) link that harvester will use to download the image",
+						Usage:    "Location from which the image will be put into Harvester, this should be either an HTTP(S) link or a path to a file that harvester will use to get the image",
 						EnvVar:   "HARVESTER_VM_IMAGE_LINK",
 						Required: true,
 					},
@@ -75,6 +99,24 @@ func ImageCommand() cli.Command {
 						Usage:    "Description of the VM Image",
 						EnvVar:   "HARVESTER_VM_IMAGE_DESCRIPTION",
 						Required: false,
+					},
+				},
+			},
+			cli.Command{
+				Name:        "catalog",
+				Aliases:     []string{"cat"},
+				Usage:       "lists an image catalog",
+				Description: "\nShows a list of freely available linux images to download from URLs",
+				ArgsUsage:   "",
+				Action:      imageCatalog,
+				Flags: []cli.Flag{
+					nsFlag,
+					cli.StringFlag{
+						Name:     "metadata-url",
+						Usage:    "Location from which to get the metadata JSON file",
+						EnvVar:   "HARVESTER_CATALOG_METADATA",
+						Required: false,
+						Value:    defaultCatalogSource,
 					},
 				},
 			},
@@ -132,9 +174,10 @@ func imageCreate(ctx *cli.Context) (err error) {
 	vmImageDisplayName := ctx.Args()[0]
 	source := ctx.String("source")
 	sourceType := "download"
-	if !strings.HasPrefix(source, "http") { //If the upload option is implemented, this will need to change!
+	if !strings.HasPrefix(source, "http") {
 		var fileInf fs.FileInfo
 		if fileInf, err = os.Stat(source); err == nil {
+			logrus.Debug("Source is a valid file!")
 			filesize := fileInf.Size()
 			sourceType = "upload"
 
@@ -145,6 +188,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 			if err != nil {
 				return
 			}
+			logrus.Info("Successfully computed URL and credentials to Harvester!")
 
 			var fileReader io.Reader
 			fileReader, err = os.Open(source)
@@ -163,7 +207,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 			}
 
 			_, err = io.Copy(part, fileReader)
-
+			logrus.Info("Successfully preparated file for upload!")
 			if err != nil {
 				return
 			}
@@ -178,6 +222,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 			if err != nil {
 				return
 			}
+			logrus.Info("Image Object successfully created in Kubernetes API!")
 			urlToSendFile := harvesterURL + "/v1/harvester/harvesterhci.io.virtualmachineimages/" + ctx.String("namespace") + "/" + vmImageCreateName + "?action=upload&size=" + strconv.FormatInt(filesize, 10)
 
 			req, err = http.NewRequest("POST", urlToSendFile, multipartBody)
@@ -207,6 +252,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 			}
 			httpClient := &http.Client{Transport: tr}
 
+			logrus.Info("Uploading image file ...")
 			var resp *http.Response
 			resp, err = httpClient.Do(req)
 
@@ -215,6 +261,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 			}
 
 			if resp.Status == "200 OK" {
+				logrus.Info("Successfully uploaded the image file! DONE!")
 				return nil
 			} else {
 				return fmt.Errorf("uploading image file to harvester was not successful: %s", resp.Body)
@@ -301,4 +348,110 @@ func getHarvesterAPIFromConfig(ctx *cli.Context) (serverConfig *config.ServerCon
 		return nil, "", fmt.Errorf("not able to determine harvester API URL")
 	}
 
+}
+
+func imageCatalog(ctx *cli.Context) (err error) {
+
+	metadataUrl := ctx.String("metadata-url")
+
+	logrus.Debug("current metadata url: " + metadataUrl)
+
+	var resp *http.Response
+	resp, err = http.Get(metadataUrl)
+	if err != nil {
+		return
+	}
+
+	defer resp.Body.Close()
+	var body []byte
+	body, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	var catalog Catalog
+	err = json.Unmarshal(body, &catalog)
+
+	if err != nil {
+		return
+	}
+
+	writer := rcmd.NewTableWriter([][]string{
+		{"NUMBER", "Id"},
+		{"NAME", "Name"},
+		{"NUMBER OF IMAGES", "NumberOfImages"},
+	},
+		ctx)
+
+	osChoiceMap := make(map[int64]string)
+	var i int64 = 0
+
+	for os, imageList := range catalog.HarvesterImageCatalog {
+		i++
+		number := int64(len(imageList))
+		writer.Write(&Os{
+			Id:             i,
+			Name:           os,
+			NumberOfImages: strconv.FormatInt(number, 10),
+		})
+		osChoiceMap[i] = os
+
+	}
+
+	writer.Close()
+
+	fmt.Println("Insert a number to select the image OS: ")
+	reader := bufio.NewReader(os.Stdin)
+	selection, err := GetSelectionFromInput(reader, len(osChoiceMap))
+	if err != nil {
+		return err
+	}
+
+	osSelection := osChoiceMap[int64(selection)]
+
+	fmt.Printf("\nHere are the images available for %s\n\n", osSelection)
+
+	writer = rcmd.NewTableWriter([][]string{
+		{"NUMBER", "Id"},
+		{"NAME", "ShortName"},
+		{"VERSION", "Version"},
+		{"BUILD", "Build"},
+		{"URL", "Url"},
+	}, ctx)
+
+	imageChoiceMap := make(map[int64]string)
+
+	for i, catalogItem := range catalog.HarvesterImageCatalog[osSelection] {
+		catalogItem.Id = int64(i) + 1
+		writer.Write(catalogItem)
+		imageChoiceMap[catalogItem.Id] = catalogItem.Url
+	}
+
+	writer.Close()
+
+	fmt.Printf("\nInsert a number to select an image to download: \n")
+	selection, err = GetSelectionFromInput(reader, len(imageChoiceMap))
+	if err != nil {
+		return err
+	}
+
+	imageUrl := imageChoiceMap[int64(selection)]
+	fmt.Printf("\nYour image URL is : %s\n", imageUrl)
+	imageUrlObject, err := url.Parse(imageUrl)
+
+	if err != nil {
+		return fmt.Errorf("the url parsed from the metadata file is invalid, %w", err)
+	}
+
+	urlPathComponents := strings.Split(imageUrlObject.EscapedPath(), "/")
+	imageFilename := urlPathComponents[len(urlPathComponents)-1]
+
+	imageCreatedName, err := createImageObjectInAPI(ctx, imageFilename, "download", imageUrl)
+	if err != nil {
+		return fmt.Errorf("error during creation of image in Harvester %w", err)
+	}
+
+	logrus.Infof("Image was created in Harvester with display name %s and id %s", imageFilename, imageCreatedName)
+
+	return nil
 }

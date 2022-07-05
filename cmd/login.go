@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -262,31 +261,14 @@ func getProjectContext(ctx *cli.Context, c *cliclient.MasterClient) (string, err
 
 	reader := bufio.NewReader(os.Stdin)
 
-	errMessage := fmt.Sprintf("Invalid input, enter a number between 1 and %v: ", len(projectCollection.Data))
 	var selection int
+	selection, err = GetSelectionFromInput(reader, len(projectCollection.Data))
 
-	for {
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			return "", err
-		}
-		input = strings.TrimSpace(input)
-
-		if input != "" {
-			i, err := strconv.Atoi(input)
-			if err != nil {
-				fmt.Print(errMessage)
-				continue
-			}
-			if i <= len(projectCollection.Data) && i != 0 {
-				selection = i - 1
-				break
-			}
-			fmt.Print(errMessage)
-			continue
-		}
+	if err != nil {
+		return "", err
 	}
-	return projectCollection.Data[selection].ID, nil
+
+	return projectCollection.Data[selection-1].ID, nil
 }
 
 func getCertFromServer(ctx *cli.Context, cf *config.ServerConfig) (*cliclient.MasterClient, error) {

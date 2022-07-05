@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/x509"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -449,4 +451,33 @@ func GetRancherTokenMap(ctx *cli.Context) (tokenMap map[string]string, configMap
 	}
 
 	return
+}
+
+func GetSelectionFromInput(reader *bufio.Reader, tableSize int) (int, error) {
+
+	errMessage := fmt.Sprintf("Invalid input, enter a number between 1 and %v: ", tableSize)
+	var selection int
+
+	for {
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return 0, err
+		}
+		input = strings.TrimSpace(input)
+
+		if input != "" {
+			i, err := strconv.Atoi(input)
+			if err != nil {
+				fmt.Print(errMessage)
+				continue
+			}
+			if i <= tableSize && i != 0 {
+				selection = i
+				break
+			}
+			fmt.Print(errMessage)
+			continue
+		}
+	}
+	return selection, nil
 }

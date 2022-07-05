@@ -12,6 +12,15 @@
       "program": "main.go",
 
       "args": ["image", "create", "--source","/home/mohamed/Downloads/kinetic-server-cloudimg-amd64.img","test-upload-from-cli"]
+    },
+    {
+      "name": "catalog",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "main.go",
+
+      "args": ["image", "catalog"]
     }
   ]
 }

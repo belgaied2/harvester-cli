@@ -477,6 +477,11 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 			}
 		} else {
 			vmTemplate.Spec.Volumes[0].PersistentVolumeClaim.ClaimName = pvcName
+
+			if vmTemplate.ObjectMeta.Labels == nil {
+				vmTemplate.ObjectMeta.Labels = make(map[string]string)
+			}
+
 			vmTemplate.ObjectMeta.Labels["harvesterhci.io/vmNamePrefix"] = vmNameBase
 			vmTemplate.Spec.Affinity = &v1.Affinity{
 				PodAntiAffinity: &v1.PodAntiAffinity{

@@ -9,6 +9,7 @@ import (
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
+	"github.com/harvester/harvester/pkg/util"
 	"github.com/minio/pkg/wildcard"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/sirupsen/logrus"
@@ -269,25 +270,56 @@ func vmDelete(ctx *cli.Context) error {
 			matchingVMs := buildVMListMatchingWildcard(c, ctx, vmName)
 
 			for _, vmExisting := range matchingVMs {
-				err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Delete(context.TODO(), vmExisting.Name, k8smetav1.DeleteOptions{})
+
+				err := vmDeleteWithPVC(&vmExisting, c, ctx)
 				if err != nil {
-					return fmt.Errorf("VM named %s could not be deleted successfully: %w", vmExisting.Name, err)
-				} else {
-					logrus.Infof("VM %s deleted successfully", vmName)
+					return err
 				}
 			}
 		} else {
-			err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Delete(context.TODO(), vmName, k8smetav1.DeleteOptions{})
+			vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
+
 			if err != nil {
-				return fmt.Errorf("VM named %s could not be deleted successfully: %w", vmName, err)
-			} else {
-				logrus.Infof("VM %s deleted successfully", vmName)
+				return fmt.Errorf("no VM with the provided name found")
 			}
+
+			vmDeleteWithPVC(vm, c, ctx)
 		}
 	}
 
 	return nil
 
+}
+
+func vmDeleteWithPVC(vmExisting *VMv1.VirtualMachine, c *harvclient.Clientset, ctx *cli.Context) error {
+
+	vmCopy := vmExisting.DeepCopy()
+	var removedPVCs []string
+	if vmCopy.Spec.Template != nil {
+		for _, vol := range vmCopy.Spec.Template.Spec.Volumes {
+			if vol.PersistentVolumeClaim == nil {
+				continue
+			}
+
+			removedPVCs = append(removedPVCs, vol.PersistentVolumeClaim.ClaimName)
+
+		}
+	}
+
+	vmCopy.Annotations[util.RemovedPVCsAnnotationKey] = strings.Join(removedPVCs, ",")
+	_, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vmCopy, k8smetav1.UpdateOptions{})
+
+	if err != nil {
+		return fmt.Errorf("error during removal of PVCs in the VM reference, %w", err)
+	}
+
+	err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Delete(context.TODO(), vmCopy.Name, k8smetav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("VM named %s could not be deleted successfully: %w", vmCopy.Name, err)
+	} else {
+		logrus.Infof("VM %s deleted successfully", vmCopy.Name)
+	}
+	return nil
 }
 
 // vmCreate implements the CLI *vm create* command, there are two options, either to create a VM from a Harvester VM template or from a VM image

@@ -1,0 +1,34 @@
+{
+  "leap": [
+    {
+      "version": "15.2",
+      "shortName": "OpenSUSE Leap JeOS 15.2",
+      "url": "https://download.opensuse.org/download/distribution/leap/15.2/appliances/openSUSE-Leap-15.2-JeOS.x86_64-15.2-OpenStack-Cloud-Build31.632.qcow2",
+      "build": "Build31.632"
+    },
+    {
+      "version": "15.3",
+      "shortName": "OpenSUSE Leap JeOS 15.3",
+      "url": "https://download.opensuse.org/download/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-15.3-OpenStack-Cloud-Build10.25.qcow2",
+      "build": "Build10.25"
+    },
+    {
+      "version": "15.3",
+      "shortName": "OpenSUSE Leap JeOS 15.3",
+      "url": "https://download.opensuse.org/download/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-15.3-OpenStack-Cloud-Current.qcow2",
+      "build": "Current"
+    },
+    {
+      "version": "15.4",
+      "shortName": "OpenSUSE Leap JeOS 15.4",
+      "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Build31.98.qcow2",
+      "build": "Build31.98"
+    },
+    {
+      "version": "15.4",
+      "shortName": "OpenSUSE Leap JeOS 15.4",
+      "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Current.qcow2",
+      "build": "Current"
+    }
+  ]
+}

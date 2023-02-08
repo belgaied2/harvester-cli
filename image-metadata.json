@@ -1,34 +1,158 @@
 {
-  "leap": [
-    {
-      "version": "15.2",
-      "shortName": "OpenSUSE Leap JeOS 15.2",
-      "url": "https://download.opensuse.org/download/distribution/leap/15.2/appliances/openSUSE-Leap-15.2-JeOS.x86_64-15.2-OpenStack-Cloud-Build31.632.qcow2",
-      "build": "Build31.632"
-    },
-    {
-      "version": "15.3",
-      "shortName": "OpenSUSE Leap JeOS 15.3",
-      "url": "https://download.opensuse.org/download/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-15.3-OpenStack-Cloud-Build10.25.qcow2",
-      "build": "Build10.25"
-    },
-    {
-      "version": "15.3",
-      "shortName": "OpenSUSE Leap JeOS 15.3",
-      "url": "https://download.opensuse.org/download/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-15.3-OpenStack-Cloud-Current.qcow2",
-      "build": "Current"
-    },
-    {
-      "version": "15.4",
-      "shortName": "OpenSUSE Leap JeOS 15.4",
-      "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Build31.98.qcow2",
-      "build": "Build31.98"
-    },
-    {
-      "version": "15.4",
-      "shortName": "OpenSUSE Leap JeOS 15.4",
-      "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Current.qcow2",
-      "build": "Current"
-    }
-  ]
+  "HarvesterImageCatalog": {
+    "leap": [
+      {
+        "version": "15.2",
+        "build": "Build31.632",
+        "shortName": "OpenSUSE Leap JeOS 15.2",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.2/appliances/openSUSE-Leap-15.2-JeOS.x86_64-15.2-OpenStack-Cloud-Build31.632.qcow2"
+      },
+      {
+        "version": "15.3",
+        "build": "Build10.25",
+        "shortName": "OpenSUSE Leap JeOS 15.3",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-15.3-OpenStack-Cloud-Build10.25.qcow2"
+      },
+      {
+        "version": "15.3",
+        "build": "Current",
+        "shortName": "OpenSUSE Leap JeOS 15.3",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-15.3-OpenStack-Cloud-Current.qcow2"
+      },
+      {
+        "version": "15.4",
+        "build": "Build31.98",
+        "shortName": "OpenSUSE Leap JeOS 15.4",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Build31.98.qcow2"
+      },
+      {
+        "version": "15.4",
+        "build": "Current",
+        "shortName": "OpenSUSE Leap JeOS 15.4",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Current.qcow2"
+      }
+    ],
+    "tumbleweed": [
+      {
+        "version": "current",
+        "build": "current",
+        "shortName": "OpenSUSE Tumbleweed",
+        "url": "https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-Minimal-VM.x86_64-Cloud.qcow2"
+      }
+    ],
+    "microos": [
+      {
+        "version": "current",
+        "build": "current",
+        "shortName": "OpenSUSE MicroOS",
+        "url": "https://download.opensuse.org/tumbleweed/appliances/openSUSE-MicroOS.x86_64-OpenStack-Cloud.qcow2"
+      }
+    ],
+    "RockyLinux": [
+      {
+        "version": "8.6",
+        "shortName": "Rocky Linux 8.6",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.6/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "8.7",
+        "shortName": "Rocky Linux 8.7",
+        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221122.0.x86_64.qcow2",
+        "build": "8.7-20221122.0"
+      },
+      {
+        "version": "8.7",
+        "shortName": "Rocky Linux 8.7",
+        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221128.0.x86_64.qcow2",
+        "build": "8.7-20221128.0"
+      },
+      {
+        "version": "8.7",
+        "shortName": "Rocky Linux 8.7",
+        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221130.0.x86_64.qcow2",
+        "build": "8.7-20221130.0"
+      },
+      {
+        "version": "8.7",
+        "shortName": "Rocky Linux 8.7",
+        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "8.7",
+        "shortName": "Rocky Linux 8.7",
+        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.0",
+        "shortName": "Rocky Linux 9.0",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.0/images/x86_64/Rocky-9-GenericCloud-9.0-20220706.0.x86_64.qcow2",
+        "build": "9.0-20220706.0"
+      },
+      {
+        "version": "9.0",
+        "shortName": "Rocky Linux 9.0",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.0/images/x86_64/Rocky-9-GenericCloud-9.0-20220830.0.x86_64.qcow2",
+        "build": "9.0-20220830.0"
+      },
+      {
+        "version": "9.0",
+        "shortName": "Rocky Linux 9.0",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.0/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.1",
+        "shortName": "Rocky Linux 9.1",
+        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20221123.0.x86_64.qcow2",
+        "build": "9.1-20221123.0"
+      },
+      {
+        "version": "9.1",
+        "shortName": "Rocky Linux 9.1",
+        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20221130.0.x86_64.qcow2",
+        "build": "9.1-20221130.0"
+      },
+      {
+        "version": "9.1",
+        "shortName": "Rocky Linux 9.1",
+        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.1",
+        "shortName": "Rocky Linux 9.1",
+        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      }
+    ],
+    "ubuntu": [
+      {
+        "version": "18.04",
+        "shortName": "Ubuntu bionic 18.04",
+        "url": "https://cloud-images.ubuntu.com/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-amd64.img",
+        "build": "latest"
+      },
+      {
+        "version": "20.04",
+        "shortName": "Ubuntu focal 20.04",
+        "url": "https://cloud-images.ubuntu.com/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-amd64.img",
+        "build": "latest"
+      },
+      {
+        "version": "22.04",
+        "shortName": "Ubuntu jammy 22.04",
+        "url": "https://cloud-images.ubuntu.com/minimal/releases/jammy/release/ubuntu-22.04-minimal-cloudimg-amd64.img",
+        "build": "latest"
+      },
+      {
+        "version": "22.10",
+        "shortName": "Ubuntu kinetic 22.10",
+        "url": "https://cloud-images.ubuntu.com/minimal/releases/kinetic/release/ubuntu-22.10-minimal-cloudimg-amd64.img",
+        "build": "latest"
+      }
+    ]
+  }
 }

@@ -21,9 +21,9 @@
       },
       {
         "version": "15.4",
-        "build": "Build31.98",
+        "build": "Build31.185",
         "shortName": "OpenSUSE Leap JeOS 15.4",
-        "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Build31.98.qcow2"
+        "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Build31.185.qcow2"
       },
       {
         "version": "15.4",
@@ -76,6 +76,12 @@
       {
         "version": "8.7",
         "shortName": "Rocky Linux 8.7",
+        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20230215.0.x86_64.qcow2",
+        "build": "8.7-20230215.0"
+      },
+      {
+        "version": "8.7",
+        "shortName": "Rocky Linux 8.7",
         "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2",
         "build": "latest"
       },
@@ -114,6 +120,12 @@
         "shortName": "Rocky Linux 9.1",
         "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20221130.0.x86_64.qcow2",
         "build": "9.1-20221130.0"
+      },
+      {
+        "version": "9.1",
+        "shortName": "Rocky Linux 9.1",
+        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20230215.0.x86_64.qcow2",
+        "build": "9.1-20230215.0"
       },
       {
         "version": "9.1",

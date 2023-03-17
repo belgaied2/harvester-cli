@@ -339,7 +339,7 @@ func getHarvesterAPIFromConfig(ctx *cli.Context) (serverConfig *config.ServerCon
 		return
 	}
 
-	var ok bool = false
+	var ok bool
 
 	if _, ok = tokenMap[harvesterKubeAPIServerHost]; ok {
 		serverConfig = configMap[harvesterKubeAPIServerHost]

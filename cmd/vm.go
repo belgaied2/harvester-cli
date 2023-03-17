@@ -192,7 +192,7 @@ func VMCommand() cli.Command {
 	}
 }
 
-//vmLs lists the VMs available in Harvester
+// vmLs lists the VMs available in Harvester
 func vmLs(ctx *cli.Context) error {
 
 	c, err := GetHarvesterClient(ctx)
@@ -256,7 +256,7 @@ func vmLs(ctx *cli.Context) error {
 	return writer.Err()
 }
 
-//vmDelete deletes VMs which name is given in argument
+// vmDelete deletes VMs which name is given in argument
 func vmDelete(ctx *cli.Context) error {
 	c, err := GetHarvesterClient(ctx)
 
@@ -283,7 +283,10 @@ func vmDelete(ctx *cli.Context) error {
 				return fmt.Errorf("no VM with the provided name found")
 			}
 
-			vmDeleteWithPVC(vm, c, ctx)
+			err = vmDeleteWithPVC(vm, c, ctx)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -337,7 +340,7 @@ func vmCreate(ctx *cli.Context) error {
 	}
 }
 
-//vmCreateFromTemplate creates a VM from a VM template provided in the CLI command
+// vmCreateFromTemplate creates a VM from a VM template provided in the CLI command
 func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 	template := ctx.String("template")
 
@@ -456,7 +459,7 @@ func fetchTemplateVersionFromInt(namespace string, c *harvclient.Clientset, vers
 	return nil, fmt.Errorf("no template with the same version found")
 }
 
-//vmCreateFromImage creates a VM from a VM Image using the CLI command context to get information
+// vmCreateFromImage creates a VM from a VM Image using the CLI command context to get information
 func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VMv1.VirtualMachineInstanceTemplateSpec) error {
 
 	var err error
@@ -566,7 +569,7 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 	return nil
 }
 
-//buildVMTemplate creates a *VMv1.VirtualMachineInstanceTemplateSpec from the CLI Flags and some computed values
+// buildVMTemplate creates a *VMv1.VirtualMachineInstanceTemplateSpec from the CLI Flags and some computed values
 func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	pvcName string, vmiLabels map[string]string, vmName string) (vmTemplate *VMv1.VirtualMachineInstanceTemplateSpec, err error) {
 
@@ -747,7 +750,7 @@ func vmStart(ctx *cli.Context) error {
 	return nil
 }
 
-//buildVMListMatchingWildcard creates an array of VM objects which names match the given wildcard pattern
+// buildVMListMatchingWildcard creates an array of VM objects which names match the given wildcard pattern
 func buildVMListMatchingWildcard(c *harvclient.Clientset, ctx *cli.Context, vmNameWildcard string) []VMv1.VirtualMachine {
 	vms, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).List(context.TODO(), k8smetav1.ListOptions{})
 
@@ -767,7 +770,7 @@ func buildVMListMatchingWildcard(c *harvclient.Clientset, ctx *cli.Context, vmNa
 	return matchingVMs
 }
 
-//startVMbyName starts a VM by first issuing a GET using the VM name, then updating the resulting VM object
+// startVMbyName starts a VM by first issuing a GET using the VM name, then updating the resulting VM object
 func startVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) error {
 	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
 
@@ -780,7 +783,7 @@ func startVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) err
 	return startVMbyRef(c, ctx, *vm)
 }
 
-//startVMbyRef updates a VM object to make it Running
+// startVMbyRef updates a VM object to make it Running
 func startVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm VMv1.VirtualMachine) (err error) {
 
 	*vm.Spec.Running = true
@@ -795,7 +798,7 @@ func startVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm VMv1.VirtualMach
 	return nil
 }
 
-//vmStop issues a power off for the virtual machine instances which name is given as argument.
+// vmStop issues a power off for the virtual machine instances which name is given as argument.
 func vmStop(ctx *cli.Context) error {
 
 	c, err := GetHarvesterClient(ctx)
@@ -820,7 +823,7 @@ func vmStop(ctx *cli.Context) error {
 	return err
 }
 
-//stopVMbyName will stop a VM by first finding it by its name and then call stopBMbyRef function
+// stopVMbyName will stop a VM by first finding it by its name and then call stopBMbyRef function
 func stopVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) error {
 	vm, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Get(context.TODO(), vmName, k8smetav1.GetOptions{})
 
@@ -833,7 +836,7 @@ func stopVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) erro
 	return stopVMbyRef(c, ctx, vm)
 }
 
-//stopVMbyRef will stop a VM by updating Spec.Running field of the VM object
+// stopVMbyRef will stop a VM by updating Spec.Running field of the VM object
 func stopVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm *VMv1.VirtualMachine) error {
 	*vm.Spec.Running = false
 

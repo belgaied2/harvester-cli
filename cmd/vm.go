@@ -155,6 +155,12 @@ func VMCommand() cli.Command {
 						EnvVar: "HARVESTER_VM_COUNT",
 						Value:  1,
 					},
+					cli.StringFlag{
+						Name:   "network, net",
+						Usage:  "Network to which the VM should be belong",
+						EnvVar: "HARVESTER_VM_NETWORK",
+						Value:  "vlan1",
+					},
 				},
 			},
 			{
@@ -490,6 +496,13 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 		return fmt.Errorf("VM count provided is 0, no VM will be created")
 	}
 
+	// Checking if provided Network exists in Harvester
+	_, err = c.K8sCniCncfIoV1().NetworkAttachmentDefinitions(ctx.String("namespace")).Get(context.TODO(), ctx.String("network"), k8smetav1.GetOptions{})
+
+	if err != nil {
+		return fmt.Errorf("problem while verifying network existence; %w", err)
+	}
+
 	for i := 1; i <= ctx.Int("count"); i++ {
 		var vmName string
 		if ctx.Int("count") > 1 {
@@ -628,7 +641,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 
 					NetworkSource: VMv1.NetworkSource{
 						Multus: &VMv1.MultusNetwork{
-							NetworkName: "vlan1",
+							NetworkName: ctx.String("network"),
 						},
 					},
 				},

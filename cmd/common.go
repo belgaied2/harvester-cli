@@ -373,7 +373,7 @@ func defaultListOpts(ctx *cli.Context) *ntypes.ListOpts {
 	return listOpts
 }
 
-//NewTrue returns a pointer to true
+// NewTrue returns a pointer to true
 func NewTrue() *bool {
 	b := true
 	return &b

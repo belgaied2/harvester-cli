@@ -21,16 +21,17 @@ import (
 )
 
 const (
-	vmAnnotationPVC             = "harvesterhci.io/volumeClaimTemplates"
-	vmAnnotationNetworkIps      = "networks.harvesterhci.io/ips"
-	defaultDiskSize             = "10Gi"
-	defaultMemSize              = "1Gi"
-	defaultNbCPUCores           = 1
-	defaultNamespace            = "default"
-	ubuntuDefaultImage          = "https://cloud-images.ubuntu.com/minimal/daily/focal/current/focal-minimal-cloudimg-amd64.img"
-	defaultCloudInitUserData    = "#cloud-config\npassword: password\nchpasswd: { expire: False}\nssh_pwauth: True\npackages:\n  - qemu-guest-agent\nruncmd:\n  - [ systemctl, daemon-reload ]\n  - [ systemctl, enable, qemu-guest-agent.service ]\n  - [ systemctl, start, --no-block, qemu-guest-agent.service ]"
-	defaultCloudInitNetworkData = "version: 2\nrenderer: networkd\nethernets:\n  enp1s0:\n    dhcp4: true\n  enp2s0:\n    dhcp4: true"
-	defaultCloudInitCmPrefix    = "default-ubuntu-"
+	vmAnnotationPVC              = "harvesterhci.io/volumeClaimTemplates"
+	vmAnnotationNetworkIps       = "networks.harvesterhci.io/ips"
+	defaultDiskSize              = "10Gi"
+	defaultMemSize               = "1Gi"
+	defaultNbCPUCores            = 1
+	defaultNamespace             = "default"
+	ubuntuDefaultImage           = "https://cloud-images.ubuntu.com/minimal/daily/focal/current/focal-minimal-cloudimg-amd64.img"
+	defaultCloudInitUserData     = "#cloud-config\npassword: password\nchpasswd: { expire: False}\nssh_pwauth: True\npackages:\n  - qemu-guest-agent\nruncmd:\n  - [ systemctl, daemon-reload ]\n  - [ systemctl, enable, qemu-guest-agent.service ]\n  - [ systemctl, start, --no-block, qemu-guest-agent.service ]"
+	defaultCloudInitNetworkData  = "version: 2\nrenderer: networkd\nethernets:\n  enp1s0:\n    dhcp4: true\n  enp2s0:\n    dhcp4: true"
+	defaultCloudInitCmPrefix     = "default-ubuntu-"
+	defaultOverCommitSettingName = "overcommit-config"
 )
 
 var (
@@ -253,7 +254,7 @@ func vmLs(ctx *cli.Context) error {
 			Name:           vm.Name,
 			Node:           vmiMap[vm.Name].Status.NodeName,
 			CPU:            vm.Spec.Template.Spec.Domain.CPU.Cores,
-			Memory:         vm.Spec.Template.Spec.Domain.Resources.Requests.Memory().String(),
+			Memory:         vm.Spec.Template.Spec.Domain.Resources.Limits.Memory().String(),
 			IPAddress:      IP,
 		})
 
@@ -627,6 +628,14 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	}
 	logrus.Debug("CloudInit: ")
 
+	overCommitSetting, err := c.HarvesterhciV1beta1().Settings().Get(context.TODO(), defaultOverCommitSettingName, k8smetav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("encountered issue when querying Harvester for setting %s: %w", defaultOverCommitSettingName, err)
+	}
+
+	var overCommitSettingMap map[string]int
+	json.Unmarshal([]byte(overCommitSetting.Default), &overCommitSettingMap)
+
 	vmTemplate = &VMv1.VirtualMachineInstanceTemplateSpec{
 		ObjectMeta: k8smetav1.ObjectMeta{
 			Annotations: vmiAnnotations(pvcName, ctx.String("ssh-keyname")),
@@ -670,8 +679,8 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 			Domain: VMv1.DomainSpec{
 				CPU: &VMv1.CPU{
 					Cores:   uint32(ctx.Int("cpus")),
-					Sockets: uint32(ctx.Int("cpus")),
-					Threads: uint32(ctx.Int("cpus")),
+					Sockets: 1,
+					Threads: 1,
 				},
 				Devices: VMv1.Devices{
 					Inputs: []VMv1.Input{
@@ -709,7 +718,12 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 				},
 				Resources: VMv1.ResourceRequirements{
 					Requests: v1.ResourceList{
+						"memory": HandleMemoryOverCommittment(overCommitSettingMap, ctx.String("memory")),
+						"cpu":    HandleCPUOverCommittment(overCommitSettingMap, int64(ctx.Int("cpus"))),
+					},
+					Limits: v1.ResourceList{
 						"memory": resource.MustParse(ctx.String("memory")),
+						"cpu":    *resource.NewQuantity(int64(ctx.Int("cpus")), resource.DecimalSI),
 					},
 				},
 			},

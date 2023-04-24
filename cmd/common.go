@@ -27,6 +27,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	regen "github.com/zach-klippenstein/goregen"
+	"k8s.io/apimachinery/pkg/api/resource"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -480,4 +481,20 @@ func GetSelectionFromInput(reader *bufio.Reader, tableSize int) (int, error) {
 		}
 	}
 	return selection, nil
+}
+
+// HandleCPUOverCommittment calculates the CPU Request based on the CPU Limit and the CPU Overcommitment setting.
+func HandleCPUOverCommittment(overCommitSettingMap map[string]int, cpuNumber int64) resource.Quantity {
+	//cpuQuantiy := resource.NewQuantity(cpuNumber, resource.DecimalSI)
+	cpuRequest := (1000 * cpuNumber) * 100 / int64(overCommitSettingMap["cpu"])
+	return *resource.NewMilliQuantity(cpuRequest, resource.DecimalSI)
+}
+
+// HandleMemoryOverCommittment calculates the memory Request based on the memory Limit and the memory Overcommitment setting.
+func HandleMemoryOverCommittment(overCommitSettingMap map[string]int, memory string) resource.Quantity {
+	//cpuQuantiy := resource.NewQuantity(cpuNumber, resource.DecimalSI)
+	memoryRequest := resource.MustParse(memory)
+	memoryValue := memoryRequest.Value()
+
+	return *resource.NewQuantity(memoryValue*100/int64(overCommitSettingMap["memory"]), resource.BinarySI)
 }

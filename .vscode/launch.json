@@ -32,5 +32,13 @@
 
       "args": ["vm", "delete", "schaeffler-k3s"]
     },
+    {
+      "name": "vm creation with overcommit",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "main.go",
+      "args": ["vm", "create",  "--vm-image-id", "image-7jrrf", "-c", "4", "-m", "2Gi", "-d", "50Gi", "--net", "vlan1", "overcommit-test"]
+    }
   ]
 }

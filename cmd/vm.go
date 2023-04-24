@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 
@@ -137,17 +138,31 @@ func VMCommand() *cli.Command {
 						Value:   defaultMemSize,
 					},
 					&cli.StringFlag{
-						Name:    "cloud-init-user-data",
-						Aliases: []string{"user-data"},
-						Usage:   "Name of the Cloud Init User Data Template to be used",
-						EnvVars: []string{"HARVESTER_USER_DATA"},
+						Name:    "user-data-cm-ref",
+						Aliases: []string{"user-data-cm"},
+						Usage:   "Name of the Cloud Init User Data Template to be used (already in Harvester)",
+						EnvVars: []string{"HARVESTER_USER_DATA_CM_REF"},
 						Value:   "",
 					},
 					&cli.StringFlag{
-						Name:    "cloud-init-network-data",
-						Aliases: []string{"network-data"},
-						Usage:   "Name of the Cloud Init Network Data Template to be used",
-						EnvVars: []string{"HARVESTER_NETWORK_DATA"},
+						Name:    "network-data-cm-ref",
+						Aliases: []string{"network-data-cm"},
+						Usage:   "Name of the Cloud Init Network Data Template to be used (already in Harvester)",
+						EnvVars: []string{"HARVESTER_NETWORK_DATA_CM_REF"},
+						Value:   "",
+					},
+					&cli.StringFlag{
+						Name:    "user-data-filepath",
+						Aliases: []string{"user-data-file"},
+						Usage:   "Path to a valid cloud-init YAML file to be used with VM creation",
+						EnvVars: []string{"HARVESTER_USER_DATA_FILEPATH"},
+						Value:   "",
+					},
+					&cli.StringFlag{
+						Name:    "network-data-filepath",
+						Aliases: []string{"network-data-file"},
+						Usage:   "Path to a valid cloud-init YAML file to be used with VM creation",
+						EnvVars: []string{"HARVESTER_NETWORK_DATA_FILEPATH"},
 						Value:   "",
 					},
 					&cli.StringFlag{
@@ -679,8 +694,8 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 					Name: "cloudinitdisk",
 					VolumeSource: VMv1.VolumeSource{
 						CloudInitNoCloud: &VMv1.CloudInitNoCloudSource{
-							UserData:    cloudInitUserData.Data["cloudInit"] + cloudInitSSHSection,
-							NetworkData: cloudInitNetworkData.Data["cloudInit"],
+							UserData:    cloudInitUserData + cloudInitSSHSection,
+							NetworkData: cloudInitNetworkData,
 						},
 					},
 				},
@@ -964,57 +979,72 @@ func setDefaultSSHKey(c *harvclient.Clientset, ctx *cli.Context) (sshKey *v1beta
 
 // getCloudInitNetworkData gives the ConfigMap object with name indicated in the command line,
 // and will create a new one called "ubuntu-std-network" if none is provided or no ConfigMap was found with the same name
-func getCloudInitData(ctx *cli.Context, scope string) (*v1.ConfigMap, error) {
+func getCloudInitData(ctx *cli.Context, scope string) (string, error) {
 	var cmName string
 	c, err := GetKubeClient(ctx)
 
 	if err != nil {
-		return &v1.ConfigMap{}, err
+		return "", err
 	}
 	if scope != "user" && scope != "network" {
-		return nil, fmt.Errorf("wrong value for scope parameter")
+		return "", fmt.Errorf("wrong value for scope parameter")
 	}
 
-	flagName := "cloud-init-" + scope + "-data"
+	flagName := scope + "-data"
+	var cloudInitDataString string
 
-	if ctx.String(flagName) == "" {
-		cmName = defaultCloudInitCmPrefix + scope + "-data"
-	} else {
+	if ctx.String(flagName+"-filepath") == "" {
+		flagName = flagName + "-cm-ref"
+
 		cmName = ctx.String(flagName)
-	}
-	var ciData *v1.ConfigMap
-	//var err error
-	ciData, err = c.CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
-
-	if err != nil && cmName == ctx.String(flagName) {
-		return nil, fmt.Errorf("%[1]v config map was not found, please specify another configmap or remove the %[1]v flag to use the default one for ubuntu", cmName)
-	}
-
-	var cloudInitContent string
-	if scope == "user" {
-		cloudInitContent = defaultCloudInitUserData
-	} else if scope == "network" {
-		cloudInitContent = defaultCloudInitNetworkData
-	}
-
-	if err != nil {
-		var err1 error
-		ciData, err1 = c.CoreV1().ConfigMaps(ctx.String("namespace")).Create(context.TODO(), &v1.ConfigMap{
-			ObjectMeta: k8smetav1.ObjectMeta{
-				Name: cmName,
-			},
-			Data: map[string]string{
-				"cloudInit": cloudInitContent,
-			},
-		}, k8smetav1.CreateOptions{})
-
-		if err1 != nil {
-			fmt.Println("Error Creating CM: " + err1.Error())
-			return nil, fmt.Errorf("error during creation of default cloud-init template")
+		if cmName == "" {
+			return "", nil
 		}
+
+		var ciData *v1.ConfigMap
+		//var err error
+		ciData, err = c.CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
+
+		if err != nil {
+			return "", fmt.Errorf("%[1]v config map was not found, please specify another configmap or remove the %[1]v flag to use the default one for ubuntu", cmName)
+		}
+
+		var cloudInitContent string
+		if scope == "user" {
+			cloudInitContent = defaultCloudInitUserData
+		} else if scope == "network" {
+			cloudInitContent = defaultCloudInitNetworkData
+		}
+
+		if err != nil {
+			var err1 error
+			ciData, err1 = c.CoreV1().ConfigMaps(ctx.String("namespace")).Create(context.TODO(), &v1.ConfigMap{
+				ObjectMeta: k8smetav1.ObjectMeta{
+					Name: cmName,
+				},
+				Data: map[string]string{
+					"cloudInit": cloudInitContent,
+				},
+			}, k8smetav1.CreateOptions{})
+
+			if err1 != nil {
+				fmt.Println("Error Creating CM: " + err1.Error())
+				return "", fmt.Errorf("error during creation of default cloud-init template")
+			}
+		}
+		return ciData.Data["cloudInit"], nil
+	}
+	if ctx.String(flagName+"-cm-ref") != "" {
+		return "", fmt.Errorf("you can't specify both a configmap reference and a file path for the cloud-init data")
 	}
 
-	return ciData, nil
+	var cloudInitDataBytes []byte
+	if cloudInitDataBytes, err = ioutil.ReadFile(ctx.String(flagName + "-filepath")); err != nil {
+		return "", fmt.Errorf("error during reading of cloud-init file: %s", err)
+	}
+	cloudInitDataString = string(cloudInitDataBytes)
+
+	return cloudInitDataString, nil
 }
 
 // CreateVMImage will create a VM Image on Harvester given an image name and an image URL

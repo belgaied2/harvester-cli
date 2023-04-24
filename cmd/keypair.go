@@ -5,7 +5,7 @@ import (
 	"time"
 
 	rcmd "github.com/rancher/cli/cmd"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -16,17 +16,17 @@ type KeypairData struct {
 }
 
 // TemplateCommand defines the CLI command that lists VM templates in Harvester
-func KeypairCommand() cli.Command {
-	return cli.Command{
+func KeypairCommand() *cli.Command {
+	return &cli.Command{
 		Name:    "keypair",
 		Aliases: []string{"key", "ssh-key"},
 		Usage:   "Manipulate SSH Keypairs",
 		Action:  keypairList,
 		Flags: []cli.Flag{
-			nsFlag,
+			&nsFlag,
 		},
 		Subcommands: cli.Commands{
-			cli.Command{
+			&cli.Command{
 				Name:        "list",
 				Aliases:     []string{"ls"},
 				Usage:       "List SSH Keypairs",
@@ -34,7 +34,7 @@ func KeypairCommand() cli.Command {
 				ArgsUsage:   "None",
 				Action:      keypairList,
 				Flags: []cli.Flag{
-					nsFlag,
+					&nsFlag,
 				},
 			},
 		},
@@ -59,7 +59,7 @@ func keypairList(ctx *cli.Context) (err error) {
 		{"FINGERPRINT", "Fingerprint"},
 		{"CREATION TIMESTAMP", "CreationTimestamp"},
 	},
-		ctx)
+		ctxv1)
 
 	defer writer.Close()
 

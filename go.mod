@@ -60,10 +60,11 @@ require (
 	github.com/rancher/types v0.0.0-20210123000350-7cb436b3f0b0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli v1.22.5
+	github.com/urfave/cli/v2 v2.25.1
 	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.22.3
 	k8s.io/apimachinery v0.22.3
 	k8s.io/client-go v12.0.0+incompatible

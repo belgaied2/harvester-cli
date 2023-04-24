@@ -13,7 +13,7 @@ import (
 	"github.com/minio/pkg/wildcard"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,10 +36,10 @@ const (
 
 var (
 	nsFlag = cli.StringFlag{
-		Name:   "namespace, n",
-		Usage:  "Namespace of the VM",
-		EnvVar: "HARVESTER_VM_NAMESPACE",
-		Value:  defaultNamespace,
+		Name:    "namespace, n",
+		Usage:   "Namespace of the VM",
+		EnvVars: []string{"HARVESTER_VM_NAMESPACE"},
+		Value:   defaultNamespace,
 	}
 )
 
@@ -55,13 +55,13 @@ type VirtualMachineData struct {
 }
 
 // VMCommand defines the CLI command that manages VMs
-func VMCommand() cli.Command {
-	return cli.Command{
+func VMCommand() *cli.Command {
+	return &cli.Command{
 		Name:    "virtualmachine",
 		Aliases: []string{"vm"},
 		Usage:   "Manage Virtual Machines on Harvester",
 		Action:  defaultAction(vmLs),
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:        "list",
 				Usage:       "List VMs",
@@ -70,7 +70,7 @@ func VMCommand() cli.Command {
 				ArgsUsage:   "None",
 				Action:      vmLs,
 				Flags: []cli.Flag{
-					nsFlag,
+					&nsFlag,
 				},
 			},
 			{
@@ -83,7 +83,7 @@ func VMCommand() cli.Command {
 				Action:    vmDelete,
 				ArgsUsage: "[VM_NAME/VM_ID]",
 				Flags: []cli.Flag{
-					nsFlag,
+					&nsFlag,
 				},
 			},
 			{
@@ -95,72 +95,81 @@ func VMCommand() cli.Command {
 				Action:    vmCreate,
 				ArgsUsage: "[VM_NAME]",
 				Flags: []cli.Flag{
-					nsFlag,
-					cli.StringFlag{
-						Name:   "vm-description",
-						Usage:  "Optional description of your VM",
-						EnvVar: "HARVESTER_VM_DESCRIPTION",
-						Value:  "",
+					&nsFlag,
+					&cli.StringFlag{
+						Name:    "vm-description",
+						Usage:   "Optional description of your VM",
+						EnvVars: []string{"HARVESTER_VM_DESCRIPTION"},
+						Value:   "",
 					},
-					cli.StringFlag{
-						Name:   "vm-image-id",
-						Usage:  "Harvester Image ID of the VM to create",
-						EnvVar: "HARVESTER_VM_IMAGE_ID",
-						Value:  "",
+					&cli.StringFlag{
+						Name:    "vm-image-id",
+						Usage:   "Harvester Image ID of the VM to create",
+						EnvVars: []string{"HARVESTER_VM_IMAGE_ID"},
+						Value:   "",
 					},
-					cli.StringFlag{
-						Name:   "disk-size, disk, d",
-						Usage:  "Size of the primary VM disk",
-						EnvVar: "HARVESTER_VM_DISKSIZE",
-						Value:  defaultDiskSize,
+					&cli.StringFlag{
+						Name:    "disk-size",
+						Aliases: []string{"disk", "d"},
+						Usage:   "Size of the primary VM disk",
+						EnvVars: []string{"HARVESTER_VM_DISKSIZE"},
+						Value:   defaultDiskSize,
 					},
-					cli.StringFlag{
-						Name:   "ssh-keyname, i",
-						Usage:  "KeyName of the SSH Key to use with this VM",
-						EnvVar: "HARVESTER_VM_KEY",
-						Value:  "",
+					&cli.StringFlag{
+						Name:    "ssh-keyname",
+						Aliases: []string{"i"},
+						Usage:   "KeyName of the SSH Key to use with this VM",
+						EnvVars: []string{"HARVESTER_VM_KEY"},
+						Value:   "",
 					},
-					cli.IntFlag{
-						Name:   "cpus, c",
-						Usage:  "Number of CPUs to dedicate to the VM",
-						EnvVar: "HARVESTER_VM_CPUS",
-						Value:  defaultNbCPUCores,
+					&cli.IntFlag{
+						Name:    "cpus",
+						Aliases: []string{"c"},
+						Usage:   "Number of CPUs to dedicate to the VM",
+						EnvVars: []string{"HARVESTER_VM_CPUS"},
+						Value:   defaultNbCPUCores,
 					},
-					cli.StringFlag{
-						Name:   "memory, m",
-						Usage:  "Amount of memory in the format XXGi",
-						EnvVar: "HARVESTER_VM_MEMORY",
-						Value:  defaultMemSize,
+					&cli.StringFlag{
+						Name:    "memory",
+						Aliases: []string{"m"},
+						Usage:   "Amount of memory in the format XXGi",
+						EnvVars: []string{"HARVESTER_VM_MEMORY"},
+						Value:   defaultMemSize,
 					},
-					cli.StringFlag{
-						Name:   "cloud-init-user-data, user-data",
-						Usage:  "Name of the Cloud Init User Data Template to be used",
-						EnvVar: "HARVESTER_USER_DATA",
-						Value:  "",
+					&cli.StringFlag{
+						Name:    "cloud-init-user-data",
+						Aliases: []string{"user-data"},
+						Usage:   "Name of the Cloud Init User Data Template to be used",
+						EnvVars: []string{"HARVESTER_USER_DATA"},
+						Value:   "",
 					},
-					cli.StringFlag{
-						Name:   "cloud-init-network-data, network-data",
-						Usage:  "Name of the Cloud Init Network Data Template to be used",
-						EnvVar: "HARVESTER_NETWORK_DATA",
-						Value:  "",
+					&cli.StringFlag{
+						Name:    "cloud-init-network-data",
+						Aliases: []string{"network-data"},
+						Usage:   "Name of the Cloud Init Network Data Template to be used",
+						EnvVars: []string{"HARVESTER_NETWORK_DATA"},
+						Value:   "",
 					},
-					cli.StringFlag{
-						Name:   "template, from-template",
-						Usage:  "Harvester VM Template to use for creating the VM in the format <template_name>:<version> or <template> in which case the latest version will be used",
-						EnvVar: "HARVESTER_VM_TEMPLATE",
-						Value:  "",
+					&cli.StringFlag{
+						Name:    "template",
+						Aliases: []string{"from-template"},
+						Usage:   "Harvester VM Template to use for creating the VM in the format <template_name>:<version> or <template> in which case the latest version will be used",
+						EnvVars: []string{"HARVESTER_VM_TEMPLATE"},
+						Value:   "",
 					},
-					cli.IntFlag{
-						Name:   "count, multiple",
-						Usage:  "Number of identical VMs to create",
-						EnvVar: "HARVESTER_VM_COUNT",
-						Value:  1,
+					&cli.IntFlag{
+						Name:    "count",
+						Aliases: []string{"number"},
+						Usage:   "Number of identical VMs to create",
+						EnvVars: []string{"HARVESTER_VM_COUNT"},
+						Value:   1,
 					},
-					cli.StringFlag{
-						Name:   "network, net",
-						Usage:  "Network to which the VM should be belong",
-						EnvVar: "HARVESTER_VM_NETWORK",
-						Value:  "vlan1",
+					&cli.StringFlag{
+						Name:    "network",
+						Aliases: []string{"net"},
+						Usage:   "Network to which the VM should be belong",
+						EnvVars: []string{"HARVESTER_VM_NETWORK"},
+						Value:   "vlan1",
 					},
 				},
 			},
@@ -170,7 +179,7 @@ func VMCommand() cli.Command {
 				Action:    vmStop,
 				ArgsUsage: "[VM_NAME]",
 				Flags: []cli.Flag{
-					nsFlag,
+					&nsFlag,
 				},
 			},
 			{
@@ -179,7 +188,7 @@ func VMCommand() cli.Command {
 				Action:    vmStart,
 				ArgsUsage: "[VM_NAME]",
 				Flags: []cli.Flag{
-					nsFlag,
+					&nsFlag,
 				},
 			},
 			{
@@ -188,11 +197,11 @@ func VMCommand() cli.Command {
 				Action:    vmRestart,
 				ArgsUsage: "[VM_NAME]",
 				Flags: []cli.Flag{
-					cli.StringFlag{
+					&cli.StringFlag{
 						Name:  "vm-name, name",
 						Usage: "Name of the VM to restart",
 					},
-					nsFlag,
+					&nsFlag,
 				},
 			},
 		},
@@ -233,7 +242,7 @@ func vmLs(ctx *cli.Context) error {
 		{"RAM", "Memory"},
 		{"IP Address", "IPAddress"},
 	},
-		ctx)
+		ctxv1)
 
 	defer writer.Close()
 
@@ -271,7 +280,7 @@ func vmDelete(ctx *cli.Context) error {
 		return err
 	}
 
-	for _, vmName := range ctx.Args() {
+	for _, vmName := range ctx.Args().Slice() {
 
 		if strings.Contains(vmName, "*") || strings.Contains(vmName, "?") {
 			matchingVMs := buildVMListMatchingWildcard(c, ctx, vmName)
@@ -757,7 +766,7 @@ func vmStart(ctx *cli.Context) error {
 		return err
 	}
 
-	for _, vmName := range ctx.Args() {
+	for _, vmName := range ctx.Args().Slice() {
 
 		if strings.Contains(vmName, "*") || strings.Contains(vmName, "?") {
 			matchingVMs := buildVMListMatchingWildcard(c, ctx, vmName)
@@ -832,7 +841,7 @@ func vmStop(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	for _, vmName := range ctx.Args() {
+	for _, vmName := range ctx.Args().Slice() {
 
 		if strings.Contains(vmName, "*") || strings.Contains(vmName, "?") {
 			matchingVMs := buildVMListMatchingWildcard(c, ctx, vmName)

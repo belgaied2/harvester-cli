@@ -11,7 +11,7 @@ import (
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
 	rcmd "github.com/rancher/cli/cmd"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,17 +61,17 @@ type Interface struct {
 }
 
 // TemplateCommand defines the CLI command that lists VM templates in Harvester
-func TemplateCommand() cli.Command {
-	return cli.Command{
+func TemplateCommand() *cli.Command {
+	return &cli.Command{
 		Name:    "template",
 		Aliases: []string{"tpl"},
 		Usage:   "Manipulate VM templates",
 		Action:  templateList,
 		Flags: []cli.Flag{
-			nsFlag,
+			&nsFlag,
 		},
 		Subcommands: cli.Commands{
-			cli.Command{
+			&cli.Command{
 				Name:        "list",
 				Aliases:     []string{"ls"},
 				Usage:       "List templates",
@@ -79,10 +79,10 @@ func TemplateCommand() cli.Command {
 				ArgsUsage:   "None",
 				Action:      templateList,
 				Flags: []cli.Flag{
-					nsFlag,
+					&nsFlag,
 				},
 			},
-			cli.Command{
+			&cli.Command{
 				Name:        "show",
 				Aliases:     []string{"get"},
 				Usage:       "show the content of a VM template",
@@ -90,7 +90,7 @@ func TemplateCommand() cli.Command {
 				ArgsUsage:   "VM_TEMPLATE:VERSION",
 				Action:      templateShow,
 				Flags: []cli.Flag{
-					nsFlag,
+					&nsFlag,
 				},
 			},
 		},
@@ -115,7 +115,7 @@ func templateList(ctx *cli.Context) (err error) {
 		{"NAME", "Name"},
 		{"LATEST_VERSION", "Version"},
 	},
-		ctx)
+		ctxv1)
 
 	defer writer.Close()
 
@@ -131,11 +131,11 @@ func templateList(ctx *cli.Context) (err error) {
 	return writer.Err()
 }
 
-//templateShow prints the content of the VM template in argument given the CLI context
+// templateShow prints the content of the VM template in argument given the CLI context
 // It checks that the number of arguments provided is equal to one then queries the VirtualMachineTemplateVersion to print its content in YAML format.
 func templateShow(ctx *cli.Context) error {
 
-	if len(ctx.Args()) != 1 {
+	if ctx.NArg() != 1 {
 		return fmt.Errorf("wrong number of arguments, one and only one argument is accepted by this method")
 	}
 

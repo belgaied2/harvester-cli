@@ -25,7 +25,7 @@ import (
 	"github.com/rancher/norman/clientbase"
 	ntypes "github.com/rancher/norman/types"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	regen "github.com/zach-klippenstein/goregen"
 	"k8s.io/apimachinery/pkg/api/resource"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -97,7 +97,7 @@ func verifyCert(caCert []byte) (string, error) {
 
 func loadConfig(ctx *cli.Context) (config.Config, error) {
 	// path will always be set by the global flag default
-	path := ctx.GlobalString("config")
+	path := ctx.String("config")
 	path = filepath.Join(path, cfgFile)
 
 	cf := config.Config{
@@ -392,7 +392,7 @@ func RandomID() string {
 
 // GetHarvesterClient creates a Client for Harvester from Config input
 func GetHarvesterClient(ctx *cli.Context) (*harvclient.Clientset, error) {
-	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
+	p := os.ExpandEnv(ctx.String("harvester-config"))
 
 	clientConfig, err := clientcmd.BuildConfigFromFlags("", p)
 
@@ -406,7 +406,7 @@ func GetHarvesterClient(ctx *cli.Context) (*harvclient.Clientset, error) {
 
 // GetKubeClient creates a Vanilla Kubernetes Client to query the Kubernetes-native API Objects
 func GetKubeClient(ctx *cli.Context) (*kubeclient.Clientset, error) {
-	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
+	p := os.ExpandEnv(ctx.String("harvester-config"))
 
 	clientConfig, err := clientcmd.BuildConfigFromFlags("", p)
 
@@ -419,7 +419,7 @@ func GetKubeClient(ctx *cli.Context) (*kubeclient.Clientset, error) {
 
 // GetRESTClientAndConfig creates a *rest.Config pointer from a KUBECONFIG file
 func GetRESTClientAndConfig(ctx *cli.Context) (clientConfig *rest.Config, err error) {
-	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
+	p := os.ExpandEnv(ctx.String("harvester-config"))
 
 	clientConfig, err = clientcmd.BuildConfigFromFlags("", p)
 

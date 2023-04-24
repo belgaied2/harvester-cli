@@ -20,7 +20,7 @@ import (
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/rancher/cli/config"
 	managementClient "github.com/rancher/types/client/management/v3"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 // LoginData is a data structure to store login context information: project and ClusterName
@@ -35,39 +35,39 @@ type CACertResponse struct {
 	Value string `json:"value"`
 }
 
-func LoginCommand() cli.Command {
-	return cli.Command{
+func LoginCommand() *cli.Command {
+	return &cli.Command{
 		Name:      "login",
 		Aliases:   []string{"l"},
 		Usage:     "Login to a Rancher server",
 		Action:    loginSetup,
 		ArgsUsage: "[SERVERURL]",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "context",
 				Usage: "Set the context during login",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "token,t",
 				Usage: "Token from the Rancher UI",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "cacert",
 				Usage: "Location of the CACerts to use",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "name",
 				Usage: "Name of the Server",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "skip-verify",
 				Usage: "Skip verification of the CACerts presented by the Server",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "harvester-config-path, path",
 				Usage: "Defines the folder in which the Harvester Kubeconfig will be created",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "cluster",
 				Usage: "Harvester cluster for which a Kubeconfig should be downloaded",
 			},
@@ -242,7 +242,7 @@ func getProjectContext(ctx *cli.Context, c *cliclient.MasterClient) (string, err
 		{"PROJECT ID", "Project.ID"},
 		{"PROJECT NAME", "Project.Name"},
 		{"PROJECT DESCRIPTION", "Project.Description"},
-	}, ctx)
+	}, ctxv1)
 
 	for i, item := range projectCollection.Data {
 		writer.Write(&LoginData{

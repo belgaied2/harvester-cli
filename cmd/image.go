@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -23,7 +24,8 @@ import (
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/rancher/cli/config"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	cliv1 "github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -58,17 +60,17 @@ const (
 )
 
 // TemplateCommand defines the CLI command that lists VM templates in Harvester
-func ImageCommand() cli.Command {
-	return cli.Command{
+func ImageCommand() *cli.Command {
+	return &cli.Command{
 		Name:    "image",
 		Aliases: []string{"img"},
 		Usage:   "Manipulate VM images",
 		Action:  imageList,
 		Flags: []cli.Flag{
-			nsFlag,
+			&nsFlag,
 		},
 		Subcommands: cli.Commands{
-			cli.Command{
+			&cli.Command{
 				Name:        "list",
 				Aliases:     []string{"ls"},
 				Usage:       "List VM images",
@@ -76,10 +78,10 @@ func ImageCommand() cli.Command {
 				ArgsUsage:   "",
 				Action:      imageList,
 				Flags: []cli.Flag{
-					nsFlag,
+					&nsFlag,
 				},
 			},
-			cli.Command{
+			&cli.Command{
 				Name:        "create",
 				Aliases:     []string{"add"},
 				Usage:       "Creates a VM image",
@@ -87,22 +89,22 @@ func ImageCommand() cli.Command {
 				ArgsUsage:   "VM_IMAGE_DISPLAYNAME",
 				Action:      imageCreate,
 				Flags: []cli.Flag{
-					nsFlag,
-					cli.StringFlag{
+					&nsFlag,
+					&cli.StringFlag{
 						Name:     "source",
 						Usage:    "Location from which the image will be put into Harvester, this should be either an HTTP(S) link or a path to a file that harvester will use to get the image",
-						EnvVar:   "HARVESTER_VM_IMAGE_LINK",
+						EnvVars:  []string{"HARVESTER_VM_IMAGE_LINK"},
 						Required: true,
 					},
-					cli.StringFlag{
+					&cli.StringFlag{
 						Name:     "description",
 						Usage:    "Description of the VM Image",
-						EnvVar:   "HARVESTER_VM_IMAGE_DESCRIPTION",
+						EnvVars:  []string{"HARVESTER_VM_IMAGE_DESCRIPTION"},
 						Required: false,
 					},
 				},
 			},
-			cli.Command{
+			&cli.Command{
 				Name:        "catalog",
 				Aliases:     []string{"cat"},
 				Usage:       "lists an image catalog",
@@ -110,11 +112,11 @@ func ImageCommand() cli.Command {
 				ArgsUsage:   "",
 				Action:      imageCatalog,
 				Flags: []cli.Flag{
-					nsFlag,
-					cli.StringFlag{
+					&nsFlag,
+					&cli.StringFlag{
 						Name:     "metadata-url",
 						Usage:    "Location from which to get the metadata JSON file",
-						EnvVar:   "HARVESTER_CATALOG_METADATA",
+						EnvVars:  []string{"HARVESTER_CATALOG_METADATA"},
 						Required: false,
 						Value:    defaultCatalogSource,
 					},
@@ -123,6 +125,16 @@ func ImageCommand() cli.Command {
 		},
 	}
 }
+
+var (
+	ctxv1 = cliv1.NewContext(
+		&cliv1.App{
+			Name: "harvester",
+		},
+		flag.NewFlagSet("", flag.ContinueOnError),
+		nil,
+	)
+)
 
 func imageList(ctx *cli.Context) (err error) {
 	c, err := GetHarvesterClient(ctx)
@@ -143,7 +155,7 @@ func imageList(ctx *cli.Context) (err error) {
 		{"SOURCE TYPE", "SourceType"},
 		{"URL", "Url"},
 	},
-		ctx)
+		ctxv1)
 
 	defer writer.Close()
 
@@ -163,7 +175,7 @@ func imageList(ctx *cli.Context) (err error) {
 
 // imageCreate create a VM Image in Harvester based on a URL and a display name as well as an optional description
 func imageCreate(ctx *cli.Context) (err error) {
-	if len(ctx.Args()) != 1 {
+	if ctx.NArg() != 1 {
 		err = fmt.Errorf("wrong number of arguments")
 	}
 
@@ -171,7 +183,7 @@ func imageCreate(ctx *cli.Context) (err error) {
 		return
 	}
 
-	vmImageDisplayName := ctx.Args()[0]
+	vmImageDisplayName := ctx.Args().Get(0)
 	source := ctx.String("source")
 	sourceType := "download"
 	if !strings.HasPrefix(source, "http") {
@@ -317,7 +329,7 @@ func createImageObjectInAPI(ctx *cli.Context, vmImageDisplayName string, sourceT
 
 func getHarvesterAPIFromConfig(ctx *cli.Context) (serverConfig *config.ServerConfig, harvesterKubeAPIServerURL string, err error) {
 
-	p := os.ExpandEnv(ctx.GlobalString("harvester-config"))
+	p := os.ExpandEnv(ctx.String("harvester-config"))
 	restConfig, err := clientcmd.BuildConfigFromFlags("", p)
 
 	if err != nil {
@@ -381,7 +393,7 @@ func imageCatalog(ctx *cli.Context) (err error) {
 		{"NAME", "Name"},
 		{"NUMBER OF IMAGES", "NumberOfImages"},
 	},
-		ctx)
+		ctxv1)
 
 	osChoiceMap := make(map[int64]string)
 	var i int64 = 0
@@ -417,7 +429,7 @@ func imageCatalog(ctx *cli.Context) (err error) {
 		{"VERSION", "Version"},
 		{"BUILD", "Build"},
 		{"URL", "Url"},
-	}, ctx)
+	}, ctxv1)
 
 	imageChoiceMap := make(map[int64]string)
 

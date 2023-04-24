@@ -16,7 +16,7 @@ import (
 
 	"github.com/harvester/harvester/pkg/generated/clientset/versioned"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -26,43 +26,43 @@ import (
 )
 
 // ShellCommand defines the CLI command that makes it possible to ssh into a VM
-func ShellCommand() cli.Command {
+func ShellCommand() *cli.Command {
 	userHome, _ := os.UserHomeDir()
-	return cli.Command{
+	return &cli.Command{
 		Name:      "shell",
 		Aliases:   []string{"sh"},
 		Usage:     "Access a VM using SSH",
 		Action:    getShell,
 		ArgsUsage: "VM_NAME",
 		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:   "namespace, n",
-				Usage:  "Namespace for the VM",
-				EnvVar: "HARVESTER_VM_NAMESPACE",
-				Value:  "default",
+			&cli.StringFlag{
+				Name:    "namespace, n",
+				Usage:   "Namespace for the VM",
+				EnvVars: []string{"HARVESTER_VM_NAMESPACE"},
+				Value:   "default",
 			},
-			cli.StringFlag{
-				Name:   "ssh-user, user",
-				Usage:  "SSH user to be used for connecting to VM",
-				EnvVar: "HARVESTER_VM_SSH_USER",
-				Value:  "ubuntu",
+			&cli.StringFlag{
+				Name:    "ssh-user, user",
+				Usage:   "SSH user to be used for connecting to VM",
+				EnvVars: []string{"HARVESTER_VM_SSH_USER"},
+				Value:   "ubuntu",
 			},
-			cli.StringFlag{
-				Name:   "ssh-key, i",
-				Usage:  "Path to SSH Private Key to be used for connecting to VM",
-				EnvVar: "HARVESTER_VM_SSH_KEY",
-				Value:  userHome + "/.ssh/id_rsa",
+			&cli.StringFlag{
+				Name:    "ssh-key, i",
+				Usage:   "Path to SSH Private Key to be used for connecting to VM",
+				EnvVars: []string{"HARVESTER_VM_SSH_KEY"},
+				Value:   userHome + "/.ssh/id_rsa",
 			},
-			cli.IntFlag{
-				Name:   "ssh-port",
-				Usage:  "TCP port to be used to connect to the VM using SSH, default is 22",
-				EnvVar: "HARVESTER_VM_SSH_PORT",
-				Value:  22,
+			&cli.IntFlag{
+				Name:    "ssh-port",
+				Usage:   "TCP port to be used to connect to the VM using SSH, default is 22",
+				EnvVars: []string{"HARVESTER_VM_SSH_PORT"},
+				Value:   22,
 			},
-			cli.BoolFlag{
-				Name:   "pod-network",
-				Usage:  "Options to connect to VM through pod network",
-				EnvVar: "HARVESTER_VM_POD_NETWORK",
+			&cli.BoolFlag{
+				Name:    "pod-network",
+				Usage:   "Options to connect to VM through pod network",
+				EnvVars: []string{"HARVESTER_VM_POD_NETWORK"},
 			},
 		},
 	}
@@ -71,7 +71,7 @@ func ShellCommand() cli.Command {
 // getShell implements the command `shell`
 // It accepts only one argument, that should be the VM name
 func getShell(ctx *cli.Context) error {
-	if len(ctx.Args()) != 1 {
+	if ctx.NArg() != 1 {
 		return fmt.Errorf("one and only one argument is accepted for this command, and that is the vm name")
 	}
 

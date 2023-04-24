@@ -8,9 +8,8 @@ import (
 
 	"github.com/belgaied2/harvester-cli/cmd"
 	"github.com/pkg/errors"
-	rancherprompt "github.com/rancher/cli/rancher_prompt"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 var VERSION = "dev"
@@ -39,24 +38,25 @@ func mainErr() error {
 	// 	return nil
 	// }
 	app.Version = VERSION
-	app.Author = "Mohamed Belgaied Hassine"
-	app.Email = "mohamed.belgaiedhassine@gmail.com"
+	app.Authors = append(app.Authors, &cli.Author{
+		Name:  "Mohamed Belgaied Hassine",
+		Email: "mohamed.belgaiedhassine@gmail.com"})
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:  "debug",
 			Usage: "Debug logging",
 		},
-		cli.StringFlag{
-			Name:   "harvester-config, hconf",
-			Usage:  "Path to Harvester's config file",
-			EnvVar: "HARVESTER_CONFIG",
-			Value:  path.Join(userHome, ".harvester", "config"),
+		&cli.StringFlag{
+			Name:    "harvester-config, hconf",
+			Usage:   "Path to Harvester's config file",
+			EnvVars: []string{"HARVESTER_CONFIG"},
+			Value:   path.Join(userHome, ".harvester", "config"),
 		},
-		cli.StringFlag{
-			Name:   "config, rconf",
-			Usage:  "Path to Rancher's config file",
-			EnvVar: "RANCHER_CONFIG",
-			Value:  path.Join(userHome, ".rancher"),
+		&cli.StringFlag{
+			Name:    "config, rconf",
+			Usage:   "Path to Rancher's config file",
+			EnvVars: []string{"RANCHER_CONFIG"},
+			Value:   path.Join(userHome, ".rancher"),
 		},
 		// cli.StringFlag{
 		// 	Name:   "loglevel",
@@ -65,7 +65,7 @@ func mainErr() error {
 		// 	Value:  "info",
 		// },
 	}
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 
 		cmd.LoginCommand(),
 		cmd.ConfigCommand(),
@@ -76,11 +76,6 @@ func mainErr() error {
 		cmd.KeypairCommand(),
 	}
 
-	for _, com := range app.Commands {
-		rancherprompt.Commands[com.Name] = com
-		rancherprompt.Commands[com.ShortName] = com
-	}
-	rancherprompt.Flags = app.Flags
 	parsed, err := parseArgs(os.Args)
 	if err != nil {
 		logrus.Error(err)

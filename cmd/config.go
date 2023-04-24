@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -9,7 +10,8 @@ import (
 	rcmd "github.com/rancher/cli/cmd"
 	client "github.com/rancher/types/client/management/v3"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	cliv1 "github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const (
@@ -23,21 +25,21 @@ type Conf struct {
 }
 
 // ConfigCommand defines a CLI command to set up the Harvester Configuration files
-func ConfigCommand() cli.Command {
-	return cli.Command{
+func ConfigCommand() *cli.Command {
+	return &cli.Command{
 		Name:    "get-config",
 		Aliases: []string{"c"},
 		Usage:   "Get KUBECONFIG of Harvester cluster from Rancher",
 		Action:  GetConfig,
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "path",
 				Usage: "Set the path where to store the KUBE config file",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:     "cluster",
 				Usage:    "Name of the cluster in Rancher for which the KUBECONFIG will be generated",
-				EnvVar:   "HARVESTER_CLUSTER_NAME",
+				EnvVars:  []string{"HARVESTER_CLUSTER_NAME"},
 				Required: true,
 				Value:    "local",
 			},
@@ -62,7 +64,9 @@ func GetConfig(ctx *cli.Context) error {
 		Content: "",
 	}
 
-	c, err := rcmd.GetClient(ctx)
+	ctxv1 := cliv1.NewContext(&cliv1.App{Name: "harvester"}, &flag.FlagSet{}, nil)
+	ctxv1.Set("config", ctx.String("config"))
+	c, err := rcmd.GetClient(ctxv1)
 	if err != nil {
 		return err
 	}

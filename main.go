@@ -74,6 +74,7 @@ func mainErr() error {
 		cmd.TemplateCommand(),
 		cmd.ImageCommand(),
 		cmd.KeypairCommand(),
+		cmd.ImportCommand(),
 	}
 
 	parsed, err := parseArgs(os.Args)

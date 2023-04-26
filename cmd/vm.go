@@ -658,7 +658,10 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	}
 
 	var overCommitSettingMap map[string]int
-	json.Unmarshal([]byte(overCommitSetting.Default), &overCommitSettingMap)
+	err = json.Unmarshal([]byte(overCommitSetting.Default), &overCommitSettingMap)
+	if err != nil {
+		return nil, fmt.Errorf("encountered issue when unmarshalling setting value %s: %w", defaultOverCommitSettingName, err)
+	}
 
 	vmTemplate = &VMv1.VirtualMachineInstanceTemplateSpec{
 		ObjectMeta: k8smetav1.ObjectMeta{

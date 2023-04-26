@@ -65,7 +65,11 @@ func GetConfig(ctx *cli.Context) error {
 	}
 
 	ctxv1 := cliv1.NewContext(&cliv1.App{Name: "harvester"}, &flag.FlagSet{}, nil)
-	ctxv1.Set("config", ctx.String("config"))
+	err = ctxv1.Set("config", ctx.String("config"))
+	if err != nil {
+		return fmt.Errorf("error setting config flag: %w", err)
+	}
+
 	c, err := rcmd.GetClient(ctxv1)
 	if err != nil {
 		return err

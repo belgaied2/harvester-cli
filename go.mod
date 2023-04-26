@@ -16,32 +16,32 @@ replace (
 	github.com/rancher/rancher/pkg/client => github.com/rancher/rancher/pkg/client v0.0.0-20211208233239-77392a65423d
 
 	helm.sh/helm/v3 => github.com/rancher/helm/v3 v3.5.4-rancher.1
-	k8s.io/api => k8s.io/api v0.23.7
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.23.7
-	k8s.io/apimachinery => k8s.io/apimachinery v0.23.7
-	k8s.io/apiserver => k8s.io/apiserver v0.23.7
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.23.7
-	k8s.io/client-go => k8s.io/client-go v0.23.7
-	k8s.io/cloud-provider => k8s.io/cloud-provider v0.23.7
-	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.23.7
-	k8s.io/code-generator => k8s.io/code-generator v0.23.7
-	k8s.io/component-base => k8s.io/component-base v0.23.7
-	k8s.io/component-helpers => k8s.io/component-helpers v0.23.7
-	k8s.io/controller-manager => k8s.io/controller-manager v0.23.7
-	k8s.io/cri-api => k8s.io/cri-api v0.23.7
-	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.23.7
-	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.23.7
-	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.23.7
-	k8s.io/kube-proxy => k8s.io/kube-proxy v0.23.7
-	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.23.7
-	k8s.io/kubectl => k8s.io/kubectl v0.23.7
-	k8s.io/kubelet => k8s.io/kubelet v0.23.7
+	k8s.io/api => k8s.io/api v0.24.7
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.24.7
+	k8s.io/apimachinery => k8s.io/apimachinery v0.24.7
+	k8s.io/apiserver => k8s.io/apiserver v0.24.7
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.24.7
+	k8s.io/client-go => k8s.io/client-go v0.24.7
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.24.7
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.24.7
+	k8s.io/code-generator => k8s.io/code-generator v0.24.7
+	k8s.io/component-base => k8s.io/component-base v0.24.7
+	k8s.io/component-helpers => k8s.io/component-helpers v0.24.7
+	k8s.io/controller-manager => k8s.io/controller-manager v0.24.7
+	k8s.io/cri-api => k8s.io/cri-api v0.24.7
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.24.7
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.24.7
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.24.7
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.24.7
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.24.7
+	k8s.io/kubectl => k8s.io/kubectl v0.24.7
+	k8s.io/kubelet => k8s.io/kubelet v0.24.7
 	k8s.io/kubernetes => k8s.io/kubernetes v1.23.7
-	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.23.7
-	k8s.io/metrics => k8s.io/metrics v0.23.7
-	k8s.io/mount-utils => k8s.io/mount-utils v0.23.7
-	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.23.7
-	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.23.7
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.24.7
+	k8s.io/metrics => k8s.io/metrics v0.24.7
+	k8s.io/mount-utils => k8s.io/mount-utils v0.24.7
+	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.24.7
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.24.7
 	kubevirt.io/api => github.com/kubevirt/api v0.54.0
 
 	kubevirt.io/client-go => github.com/kubevirt/client-go v0.54.0
@@ -55,21 +55,29 @@ require (
 	github.com/google/gxui v0.0.0-20151028112939-f85e0a97b3a4 // indirect
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/harvester/harvester v1.1.1
+	github.com/harvester/vm-import-controller v0.1.4 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/minio/pkg v1.1.14
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/cli v1.0.0-alpha9.0.20210315153654-8de9f8e29aef
 	github.com/rancher/norman v0.0.0-20220520225714-4cc2f5a97011
 	github.com/rancher/types v0.0.0-20210123000350-7cb436b3f0b0
-	github.com/sirupsen/logrus v1.8.1
+	github.com/rancher/wrangler v1.1.0 // indirect
+	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli v1.22.5
 	github.com/urfave/cli/v2 v2.25.1
 	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
-	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
+	golang.org/x/term v0.6.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.24.0
-	k8s.io/apimachinery v0.24.0
+	gotest.tools/v3 v3.2.0 // indirect
+	k8s.io/api v0.25.4
+	k8s.io/apimachinery v0.25.4
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/kubectl v0.23.6
+	k8s.io/kubectl v0.24.7
 	kubevirt.io/api v0.59.0
+	kubevirt.io/client-go v0.49.0 // indirect
+	kubevirt.io/containerized-data-importer-api v1.50.0 // indirect
+	sigs.k8s.io/controller-runtime v0.12.2 // indirect
 )

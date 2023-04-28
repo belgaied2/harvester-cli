@@ -272,13 +272,20 @@ func vmLs(ctx *cli.Context) error {
 			IP = vmiMap[vm.Name].Status.Interfaces[0].IP
 		}
 
+		var memory string
+		if vm.Spec.Template.Spec.Domain.Resources.Limits.Memory().CmpInt64(int64(0)) == 0 {
+			memory = vm.Spec.Template.Spec.Domain.Resources.Requests.Memory().String()
+		} else {
+			memory = vm.Spec.Template.Spec.Domain.Resources.Limits.Memory().String()
+		}
+
 		writer.Write(&VirtualMachineData{
 			State:          state,
 			VirtualMachine: vm,
 			Name:           vm.Name,
 			Node:           vmiMap[vm.Name].Status.NodeName,
 			CPU:            vm.Spec.Template.Spec.Domain.CPU.Cores,
-			Memory:         vm.Spec.Template.Spec.Domain.Resources.Limits.Memory().String(),
+			Memory:         memory,
 			IPAddress:      IP,
 		})
 

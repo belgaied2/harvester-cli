@@ -30,7 +30,7 @@ const (
 	defaultNamespace             = "default"
 	ubuntuDefaultImage           = "https://cloud-images.ubuntu.com/minimal/daily/focal/current/focal-minimal-cloudimg-amd64.img"
 	defaultCloudInitUserData     = "#cloud-config\npassword: password\nchpasswd: { expire: False}\nssh_pwauth: True\npackages:\n  - qemu-guest-agent\nruncmd:\n  - [ systemctl, daemon-reload ]\n  - [ systemctl, enable, qemu-guest-agent.service ]\n  - [ systemctl, start, --no-block, qemu-guest-agent.service ]"
-	defaultCloudInitNetworkData  = "version: 2\nrenderer: networkd\nethernets:\n  enp1s0:\n    dhcp4: true\n  enp2s0:\n    dhcp4: true"
+	defaultCloudInitNetworkData  = "version: 2\nrenderer: networkd\nethernets:\n  enp1s0:\n    dhcp4: true"
 	defaultCloudInitCmPrefix     = "default-ubuntu-"
 	defaultOverCommitSettingName = "overcommit-config"
 )
@@ -1007,42 +1007,24 @@ func getCloudInitData(ctx *cli.Context, scope string) (string, error) {
 		flagName = flagName + "-cm-ref"
 
 		cmName = ctx.String(flagName)
-		if cmName == "" {
-			return "", nil
-		}
 
 		var ciData *v1.ConfigMap
-		//var err error
-		ciData, err = c.CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
+		if cmName != "" {
+			ciData, err = c.CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
 
-		if err != nil {
-			return "", fmt.Errorf("%[1]v config map was not found, please specify another configmap or remove the %[1]v flag to use the default one for ubuntu", cmName)
-		}
-
-		var cloudInitContent string
-		if scope == "user" {
-			cloudInitContent = defaultCloudInitUserData
-		} else if scope == "network" {
-			cloudInitContent = defaultCloudInitNetworkData
-		}
-
-		if err != nil {
-			var err1 error
-			ciData, err1 = c.CoreV1().ConfigMaps(ctx.String("namespace")).Create(context.TODO(), &v1.ConfigMap{
-				ObjectMeta: k8smetav1.ObjectMeta{
-					Name: cmName,
-				},
-				Data: map[string]string{
-					"cloudInit": cloudInitContent,
-				},
-			}, k8smetav1.CreateOptions{})
-
-			if err1 != nil {
-				fmt.Println("Error Creating CM: " + err1.Error())
-				return "", fmt.Errorf("error during creation of default cloud-init template")
+			if err != nil {
+				return "", fmt.Errorf("%[1]v config map was not found, please specify another configmap or remove the %[1]v flag to use the default one for ubuntu", cmName)
 			}
+
+			return ciData.Data["cloudInit"], nil
 		}
-		return ciData.Data["cloudInit"], nil
+
+		if scope == "user" {
+			return defaultCloudInitUserData, nil
+		} else if scope == "network" {
+			return defaultCloudInitNetworkData, nil
+		}
+
 	}
 	if ctx.String(flagName+"-cm-ref") != "" {
 		return "", fmt.Errorf("you can't specify both a configmap reference and a file path for the cloud-init data")

@@ -29,7 +29,7 @@ const (
 	defaultNbCPUCores            = 1
 	defaultNamespace             = "default"
 	ubuntuDefaultImage           = "https://cloud-images.ubuntu.com/minimal/daily/focal/current/focal-minimal-cloudimg-amd64.img"
-	defaultCloudInitUserData     = "#cloud-config\npassword: password\nchpasswd: { expire: False}\nssh_pwauth: True\npackages:\n  - qemu-guest-agent\nruncmd:\n  - [ systemctl, daemon-reload ]\n  - [ systemctl, enable, qemu-guest-agent.service ]\n  - [ systemctl, start, --no-block, qemu-guest-agent.service ]"
+	defaultCloudInitUserData     = "#cloud-config\npackages:\n  - qemu-guest-agent\nruncmd:\n  - [ systemctl, daemon-reload ]\n  - [ systemctl, enable, qemu-guest-agent.service ]\n  - [ systemctl, start, --no-block, qemu-guest-agent.service ]"
 	defaultCloudInitNetworkData  = "version: 2\nrenderer: networkd\nethernets:\n  enp1s0:\n    dhcp4: true"
 	defaultCloudInitCmPrefix     = "default-ubuntu-"
 	defaultOverCommitSettingName = "overcommit-config"

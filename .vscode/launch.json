@@ -33,6 +33,22 @@
       "args": ["vm", "delete", "vm_1"]
     },
     {
+      "name": "vm create VM from template and other flags: cpu & memory",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "main.go",
+      "args": ["vm",  "create", "--template", "ubuntu-template:1", "toto--vm"]
+    },
+    {
+      "name": "vm create VM from template and other flags",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "main.go",
+      "args": ["vm",  "create", "--template", "ubuntu-template:1", "--disk-size", "100Gi"]
+    },
+    {
       "name": "vm import create VM Import from OpenStack",
       "type": "go",
       "request": "launch",

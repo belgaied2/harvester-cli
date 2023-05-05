@@ -17,6 +17,7 @@ import (
 	"github.com/urfave/cli/v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	VMv1 "kubevirt.io/api/core/v1"
 )
@@ -42,6 +43,7 @@ var (
 		EnvVars: []string{"HARVESTER_VM_NAMESPACE"},
 		Value:   defaultNamespace,
 	}
+	overCommitSettingMap map[string]int
 )
 
 // VirtualMachineData type is a Data Structure that holds information to display for VM
@@ -382,7 +384,7 @@ func vmCreate(ctx *cli.Context) error {
 func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 	template := ctx.String("template")
 
-	logrus.Warnf("You are using a template flag, please be aware that any other flag will be IGNORED!")
+	logrus.Warnf("You are using a template flag, please be aware that:\nFlags: --disk-size, --cpus, --memory, --user-data-* and --network-data-* will override the template.\nAny other flag will be IGNORED!")
 
 	// checking template format
 	subCompTemplate := SplitOnColon(template)
@@ -458,10 +460,12 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 		return fmt.Errorf("error during setting flag to context: %w", err)
 	}
 
-	err = ctx.Set("disk-size", pvc.Spec.Resources.Requests.Storage().String())
+	if ctx.String("disk-size") == "" {
+		err = ctx.Set("disk-size", pvc.Spec.Resources.Requests.Storage().String())
 
-	if err != nil {
-		return fmt.Errorf("error during setting flag to context: %w", err)
+		if err != nil {
+			return fmt.Errorf("error during setting flag to context: %w", err)
+		}
 	}
 
 	vmTemplate := templateVersion.Spec.VM.Spec.Template
@@ -535,6 +539,17 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 		return fmt.Errorf("problem while verifying network existence; %w", err)
 	}
 
+	overCommitSetting, err := c.HarvesterhciV1beta1().Settings().Get(context.TODO(), defaultOverCommitSettingName, k8smetav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("encountered issue when querying Harvester for setting %s: %w", defaultOverCommitSettingName, err)
+	}
+
+	err = json.Unmarshal([]byte(overCommitSetting.Default), &overCommitSettingMap)
+	if err != nil {
+		return fmt.Errorf("encountered issue when unmarshalling setting value %s: %w", defaultOverCommitSettingName, err)
+	}
+	ctx.App.Metadata["overCommitSettingMap"] = overCommitSettingMap
+
 	for i := 1; i <= ctx.Int("count"); i++ {
 		var vmName string
 		if ctx.Int("count") > 1 {
@@ -580,6 +595,11 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 					},
 				},
 			}
+		}
+
+		err := enrichVMTemplate(c, ctx, vmTemplate)
+		if err != nil {
+			return fmt.Errorf("unable to enrich VM template with values from flags: %w", err)
 		}
 
 		ubuntuVM := &VMv1.VirtualMachine{
@@ -657,18 +677,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 		err = fmt.Errorf("error during getting cloud-init for networking: %w", err1)
 		return
 	}
-	logrus.Debug("CloudInit: ")
-
-	overCommitSetting, err := c.HarvesterhciV1beta1().Settings().Get(context.TODO(), defaultOverCommitSettingName, k8smetav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("encountered issue when querying Harvester for setting %s: %w", defaultOverCommitSettingName, err)
-	}
-
-	var overCommitSettingMap map[string]int
-	err = json.Unmarshal([]byte(overCommitSetting.Default), &overCommitSettingMap)
-	if err != nil {
-		return nil, fmt.Errorf("encountered issue when unmarshalling setting value %s: %w", defaultOverCommitSettingName, err)
-	}
+	//logrus.Debug("CloudInit: ")
 
 	vmTemplate = &VMv1.VirtualMachineInstanceTemplateSpec{
 		ObjectMeta: k8smetav1.ObjectMeta{
@@ -1060,4 +1069,58 @@ func CreateVMImage(c *harvclient.Clientset, namespace string, imageName string, 
 	}
 
 	return vmImage, nil
+}
+
+func enrichVMTemplate(c *harvclient.Clientset, ctx *cli.Context, vmTemplate *VMv1.VirtualMachineInstanceTemplateSpec) error {
+
+	//overCommitSettingMap, ok := ctx.App.Metadata["overCommitSettingMap"].(map[string]int)
+	//if !ok {
+	//return fmt.Errorf("error during type assertion of overCommitSettingMap")
+	//}
+
+	if ctx.IsSet("cpus") {
+		vmTemplate.Spec.Domain.CPU.Cores = uint32(ctx.Int("cpus"))
+		cpuQuantity := k8sresource.NewQuantity(int64(ctx.Int("cpus")), k8sresource.DecimalSI)
+		vmTemplate.Spec.Domain.Resources.Limits["cpu"] = *cpuQuantity
+		if vmTemplate.Spec.Domain.Resources.Requests == nil {
+			vmTemplate.Spec.Domain.Resources.Requests = v1.ResourceList{}
+		}
+		vmTemplate.Spec.Domain.Resources.Requests["cpu"] = HandleCPUOverCommittment(overCommitSettingMap, int64(ctx.Int("cpus")))
+	}
+
+	if ctx.IsSet("memory") {
+		vmTemplate.Spec.Domain.Resources.Limits["memory"] = k8sresource.MustParse(ctx.String("memory"))
+		if vmTemplate.Spec.Domain.Resources.Requests == nil {
+			vmTemplate.Spec.Domain.Resources.Requests = v1.ResourceList{}
+		}
+		vmTemplate.Spec.Domain.Resources.Requests["memory"] = HandleMemoryOverCommittment(overCommitSettingMap, ctx.String("memory"))
+	}
+
+	for _, userDataType := range []string{"network", "user"} {
+		for _, reference := range []string{"filepath", "cm-ref"} {
+			if ctx.String(userDataType+"-data-"+reference) != "" {
+				for _, volume := range vmTemplate.Spec.Volumes {
+					if volume.Name == "cloudinitdisk" {
+						if userDataType == "network" {
+							networkData, err := getCloudInitData(ctx, "network")
+							if err != nil {
+								return fmt.Errorf("error during the retrieval of the network cloud-init data: %s", err)
+							}
+							volume.CloudInitNoCloud.NetworkData = networkData
+						} else {
+							userData, err := getCloudInitData(ctx, "user")
+							if err != nil {
+								return fmt.Errorf("error during the retrieval of the user cloud-init data: %s", err)
+							}
+
+							volume.CloudInitNoCloud.UserData = userData
+
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }

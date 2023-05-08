@@ -75,7 +75,9 @@ func mainErr() error {
 		cmd.ImageCommand(),
 		cmd.KeypairCommand(),
 		cmd.ImportCommand(),
+		cmd.CompleteCommand(),
 	}
+	app.EnableBashCompletion = true
 
 	parsed, err := parseArgs(os.Args)
 	if err != nil {

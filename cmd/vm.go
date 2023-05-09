@@ -15,6 +15,7 @@ import (
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	k8sresource "k8s.io/apimachinery/pkg/api/resource"
@@ -640,7 +641,6 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 
 	var err1 error
 	cloudInitCustomUserData, err1 := getCloudInitData(ctx, "user")
-	vmTemplate = nil
 	if err1 != nil {
 		err = fmt.Errorf("error during getting cloud init user data from Harvester: %w", err1)
 		return
@@ -657,7 +657,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 		}
 		logrus.Debugf("SSH Key Name %s given does exist!", ctx.String("ssh-keyname"))
 
-	} else {
+	} else if !userDataContainsKey(cloudInitCustomUserData) {
 		sshKey, err1 = setDefaultSSHKey(c, ctx)
 		if err1 != nil {
 			err = fmt.Errorf("error during setting default SSH key: %w", err1)
@@ -665,10 +665,10 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 		}
 	}
 
-	if sshKey == nil || sshKey == (&v1beta1.KeyPair{}) {
-		err = fmt.Errorf("no keypair could be defined")
-		return
-	}
+	//if sshKey == nil || sshKey == (&v1beta1.KeyPair{}) {
+	//err = fmt.Errorf("no keypair could be defined")
+	//return
+	//}
 	cloudInitUserData, err := MergeOptionsInUserData(cloudInitCustomUserData, defaultCloudInitUserData, sshKey)
 	if err != nil {
 		err = fmt.Errorf("error during merging cloud init user data: %w", err)
@@ -1126,4 +1126,20 @@ func enrichVMTemplate(c *harvclient.Clientset, ctx *cli.Context, vmTemplate *VMv
 	}
 
 	return nil
+}
+
+// checks if the userData contains the an ssh_authorize_keys entry
+func userDataContainsKey(userData string) bool {
+	var userDataMap map[string]interface{}
+
+	if err := yaml.Unmarshal([]byte(userData), &userDataMap); err != nil {
+		return false
+	}
+
+	if _, ok := userDataMap["ssh_authorized_keys"]; ok {
+		return true
+	}
+
+	return false
+
 }

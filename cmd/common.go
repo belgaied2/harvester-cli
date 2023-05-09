@@ -517,7 +517,7 @@ func MergeOptionsInUserData(userData string, defaultUserData string, sshKey *v1b
 		return "", err
 	}
 
-	if userDataMap["ssh_authorized_keys"] != nil {
+	if (userDataMap["ssh_authorized_keys"] != nil && sshKey != nil && sshKey != &v1beta1.KeyPair{}) {
 		sshKeyList := userDataMap["ssh_authorized_keys"].([]interface{})
 		sshKeyList = append(sshKeyList, sshKey.Spec.PublicKey)
 

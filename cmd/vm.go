@@ -595,11 +595,11 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 					},
 				},
 			}
-		}
 
-		err := enrichVMTemplate(c, ctx, vmTemplate)
-		if err != nil {
-			return fmt.Errorf("unable to enrich VM template with values from flags: %w", err)
+			err := enrichVMTemplate(c, ctx, vmTemplate)
+			if err != nil {
+				return fmt.Errorf("unable to enrich VM template with values from flags: %w", err)
+			}
 		}
 
 		ubuntuVM := &VMv1.VirtualMachine{
@@ -639,7 +639,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	pvcName string, vmiLabels map[string]string, vmName string) (vmTemplate *VMv1.VirtualMachineInstanceTemplateSpec, err error) {
 
 	var err1 error
-	cloudInitUserData, err1 := getCloudInitData(ctx, "user")
+	cloudInitCustomUserData, err1 := getCloudInitData(ctx, "user")
 	vmTemplate = nil
 	if err1 != nil {
 		err = fmt.Errorf("error during getting cloud init user data from Harvester: %w", err1)
@@ -669,8 +669,11 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 		err = fmt.Errorf("no keypair could be defined")
 		return
 	}
-
-	cloudInitSSHSection := "\nssh_authorized_keys:\n  - " + sshKey.Spec.PublicKey + "\n"
+	cloudInitUserData, err := MergeOptionsInUserData(cloudInitCustomUserData, defaultCloudInitUserData, sshKey)
+	if err != nil {
+		err = fmt.Errorf("error during merging cloud init user data: %w", err)
+		return
+	}
 
 	cloudInitNetworkData, err1 := getCloudInitData(ctx, "network")
 	if err1 != nil {
@@ -713,7 +716,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 					Name: "cloudinitdisk",
 					VolumeSource: VMv1.VolumeSource{
 						CloudInitNoCloud: &VMv1.CloudInitNoCloudSource{
-							UserData:    cloudInitUserData + cloudInitSSHSection,
+							UserData:    cloudInitUserData,
 							NetworkData: cloudInitNetworkData,
 						},
 					},

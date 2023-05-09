@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/namesgenerator"
+	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
 	"github.com/pkg/errors"
 	"github.com/rancher/cli/cliclient"
@@ -27,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	regen "github.com/zach-klippenstein/goregen"
+	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/api/resource"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -497,4 +499,55 @@ func HandleMemoryOverCommittment(overCommitSettingMap map[string]int, memory str
 	memoryValue := memoryRequest.Value()
 
 	return *resource.NewQuantity(memoryValue*100/int64(overCommitSettingMap["memory"]), resource.BinarySI)
+}
+
+// MergeOptionsInUserData merges the default user data and the provided public key with the user data provided by the user
+func MergeOptionsInUserData(userData string, defaultUserData string, sshKey *v1beta1.KeyPair) (string, error) {
+	var err error
+	var userDataMap map[string]interface{}
+	var defaultUserDataMap map[string]interface{}
+
+	err = yaml.Unmarshal([]byte(userData), &userDataMap)
+	if err != nil {
+		return "", err
+	}
+
+	err = yaml.Unmarshal([]byte(defaultUserData), &defaultUserDataMap)
+	if err != nil {
+		return "", err
+	}
+
+	if userDataMap["ssh_authorized_keys"] != nil {
+		sshKeyList := userDataMap["ssh_authorized_keys"].([]interface{})
+		sshKeyList = append(sshKeyList, sshKey.Spec.PublicKey)
+
+		userDataMap["ssh_authorized_keys"] = sshKeyList
+	}
+
+	if userDataMap["packages"] != nil {
+		packagesList := userDataMap["packages"].([]interface{})
+		packagesList = append(packagesList, defaultUserDataMap["packages"].([]interface{})...)
+		userDataMap["packages"] = packagesList
+	} else {
+		userDataMap["packages"] = defaultUserDataMap["packages"]
+	}
+
+	if userDataMap["runcmd"] != nil {
+		runcmdList := defaultUserDataMap["runcmd"].([]interface{})
+		runcmdList = append(runcmdList, userDataMap["runcmd"].([]interface{})...)
+		userDataMap["runcmd"] = runcmdList
+	} else {
+		userDataMap["runcmd"] = defaultUserDataMap["runcmd"]
+	}
+
+	mergedUserData, err := yaml.Marshal(userDataMap)
+
+	if err != nil {
+		return "", err
+	}
+
+	finalUserData := fmt.Sprintf("#cloud-config\n%s", string(mergedUserData))
+
+	return finalUserData, nil
+
 }

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/url"
 	"os"
@@ -69,7 +68,7 @@ type RoleTemplateBinding struct {
 }
 
 func loadAndVerifyCert(path string) (string, error) {
-	caCert, err := ioutil.ReadFile(path)
+	caCert, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +106,7 @@ func loadConfig(ctx *cli.Context) (config.Config, error) {
 		Servers: make(map[string]*config.ServerConfig),
 	}
 
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return cf, nil
 	} else if err != nil {

@@ -1,4 +1,4 @@
-package cmd
+package cmd_import
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	cmd_image "github.com/belgaied2/harvester-cli/cmd/image"
+	"github.com/belgaied2/harvester-cli/common"
 	VMImportV1 "github.com/harvester/vm-import-controller/pkg/apis/migration.harvesterhci.io/v1beta1"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/sirupsen/logrus"
@@ -186,7 +188,7 @@ func importDeleteCommand() *cli.Command {
 }
 
 func enableVMImport(ctx *cli.Context) error {
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -213,7 +215,7 @@ func enableVMImport(ctx *cli.Context) error {
 // listVMImports lists all VM imports present in Harvester
 func listVMImports(ctx *cli.Context) error {
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -238,7 +240,7 @@ func listVMImports(ctx *cli.Context) error {
 		{"STATUS", "Status"},
 		{"SOURCE_CLUSTER", "SourceCluster"},
 		{"CLUSTER_TYPE", "ClusterType"},
-	}, ctxv1)
+	}, cmd_image.Ctxv1)
 
 	defer writer.Close()
 
@@ -261,7 +263,7 @@ func configureVMImport(ctx *cli.Context) error {
 		return fmt.Errorf("VM import name is required, only 1 argument is allowed")
 	}
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -361,7 +363,7 @@ func deleteVMImportSource(ctx *cli.Context) error {
 		return fmt.Errorf("VM import name is required, only 1 argument is allowed")
 	}
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -400,7 +402,7 @@ func createVMImport(ctx *cli.Context) error {
 		return fmt.Errorf("VM import name is required, only 1 argument is allowed")
 	}
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -480,7 +482,7 @@ func deleteVMImport(ctx *cli.Context) error {
 		return fmt.Errorf("VM import name is required, only 1 argument is allowed")
 	}
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err

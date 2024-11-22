@@ -1,4 +1,4 @@
-package cmd
+package cmd_login
 
 import (
 	"bufio"
@@ -13,6 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	cmd_config "github.com/belgaied2/harvester-cli/cmd/config"
+	cmd_image "github.com/belgaied2/harvester-cli/cmd/image"
+	"github.com/belgaied2/harvester-cli/common"
 	"github.com/sirupsen/logrus"
 
 	"github.com/grantae/certinfo"
@@ -81,7 +84,7 @@ func loginSetup(ctx *cli.Context) error {
 		return cli.ShowCommandHelp(ctx, "login")
 	}
 
-	cf, err := loadConfig(ctx)
+	cf, err := common.LoadConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -103,7 +106,7 @@ func loginSetup(ctx *cli.Context) error {
 	serverConfig.URL = u.String()
 
 	if ctx.String("token") != "" {
-		auth := SplitOnColon(ctx.String("token"))
+		auth := common.SplitOnColon(ctx.String("token"))
 		if len(auth) != 2 {
 			return errors.New("invalid token")
 		}
@@ -116,7 +119,7 @@ func loginSetup(ctx *cli.Context) error {
 	}
 
 	if ctx.String("cacert") != "" {
-		cert, err := loadAndVerifyCert(ctx.String("cacert"))
+		cert, err := common.LoadAndVerifyCert(ctx.String("cacert"))
 		if err != nil {
 			return err
 		}
@@ -161,7 +164,7 @@ func loginSetup(ctx *cli.Context) error {
 		return err
 	}
 
-	err = ctx.Set("cluster", SplitOnColon(proj)[0])
+	err = ctx.Set("cluster", common.SplitOnColon(proj)[0])
 
 	if err != nil {
 		return err
@@ -173,7 +176,7 @@ func loginSetup(ctx *cli.Context) error {
 		return err
 	}
 
-	err = GetConfig(ctx)
+	err = cmd_config.GetConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -186,19 +189,19 @@ func getProjectContext(ctx *cli.Context, c *cliclient.MasterClient) (string, err
 	if ctx.String("context") != "" {
 		context := ctx.String("context")
 		// Check if given context is in valid format
-		_, _, err := parseClusterAndProjectID(context)
+		_, _, err := common.ParseClusterAndProjectID(context)
 		if err != nil {
 			return "", fmt.Errorf("unable to parse context (%s). Please provide context as local:p-xxxxx, c-xxxxx:p-xxxxx, or c-xxxxx:project-xxxxx", context)
 		}
 		// Check if context exists
-		_, err = Lookup(c, context, "project")
+		_, err = common.Lookup(c, context, "project")
 		if err != nil {
 			return "", fmt.Errorf("unable to find context (%s). Make sure the context exists and you have permissions to use it. Error: %s", context, err)
 		}
 		return context, nil
 	}
 
-	projectCollection, err := c.ManagementClient.Project.List(defaultListOpts(ctx))
+	projectCollection, err := c.ManagementClient.Project.List(common.DefaultListOpts(ctx))
 	if err != nil {
 		return "", err
 	}
@@ -231,7 +234,7 @@ func getProjectContext(ctx *cli.Context, c *cliclient.MasterClient) (string, err
 		}
 	}
 
-	clusterNames, err := getClusterNames(ctx, c)
+	clusterNames, err := common.GetClusterNames(ctx, c)
 	if err != nil {
 		return "", err
 	}
@@ -242,7 +245,7 @@ func getProjectContext(ctx *cli.Context, c *cliclient.MasterClient) (string, err
 		{"PROJECT ID", "Project.ID"},
 		{"PROJECT NAME", "Project.Name"},
 		{"PROJECT DESCRIPTION", "Project.Description"},
-	}, ctxv1)
+	}, cmd_image.Ctxv1)
 
 	for i, item := range projectCollection.Data {
 		writer.Write(&LoginData{
@@ -262,7 +265,7 @@ func getProjectContext(ctx *cli.Context, c *cliclient.MasterClient) (string, err
 	reader := bufio.NewReader(os.Stdin)
 
 	var selection int
-	selection, err = GetSelectionFromInput(reader, len(projectCollection.Data))
+	selection, err = common.GetSelectionFromInput(reader, len(projectCollection.Data))
 
 	if err != nil {
 		return "", err
@@ -302,7 +305,7 @@ func getCertFromServer(ctx *cli.Context, cf *config.ServerConfig) (*cliclient.Ma
 		return nil, fmt.Errorf("unable to parse response from %s/v3/settings/cacerts\nError: %s\nResponse:\n%s", cf.URL, err, content)
 	}
 
-	cert, err := verifyCert([]byte(certReponse.Value))
+	cert, err := common.VerifyCert([]byte(certReponse.Value))
 	if err != nil {
 		return nil, err
 	}

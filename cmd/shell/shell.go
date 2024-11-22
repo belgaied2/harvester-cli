@@ -1,4 +1,4 @@
-package cmd
+package cmd_shell
 
 import (
 	"bufio"
@@ -14,6 +14,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/belgaied2/harvester-cli/common"
 	"github.com/harvester/harvester/pkg/generated/clientset/versioned"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -76,19 +77,19 @@ func getShell(ctx *cli.Context) error {
 	}
 
 	vmName := ctx.Args().First()
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
 	}
 
-	restConf, err := GetRESTClientAndConfig(ctx)
+	restConf, err := common.GetRESTClientAndConfig(ctx)
 
 	if err != nil {
 		return fmt.Errorf("error when setting up Kubernetes API client: %w", err)
 	}
 
-	k, err := GetKubeClient(ctx)
+	k, err := common.GetKubeClient(ctx)
 
 	if err != nil {
 		return fmt.Errorf("error when setting up Kubernetes API client: %w", err)

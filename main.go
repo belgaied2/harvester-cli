@@ -6,7 +6,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/belgaied2/harvester-cli/cmd"
+	cmd_complete "github.com/belgaied2/harvester-cli/cmd/complete"
+	cmd_config "github.com/belgaied2/harvester-cli/cmd/config"
+	cmd_image "github.com/belgaied2/harvester-cli/cmd/image"
+	cmd_import "github.com/belgaied2/harvester-cli/cmd/import"
+	cmd_keypair "github.com/belgaied2/harvester-cli/cmd/keypair"
+	cmd_login "github.com/belgaied2/harvester-cli/cmd/login"
+	cmd_shell "github.com/belgaied2/harvester-cli/cmd/shell"
+	cmd_template "github.com/belgaied2/harvester-cli/cmd/template"
+	cmd_vm "github.com/belgaied2/harvester-cli/cmd/vm"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -66,16 +74,15 @@ func mainErr() error {
 		// },
 	}
 	app.Commands = []*cli.Command{
-
-		cmd.LoginCommand(),
-		cmd.ConfigCommand(),
-		cmd.VMCommand(),
-		cmd.ShellCommand(),
-		cmd.TemplateCommand(),
-		cmd.ImageCommand(),
-		cmd.KeypairCommand(),
-		cmd.ImportCommand(),
-		cmd.CompleteCommand(),
+		cmd_complete.CompleteCommand(),
+		cmd_config.ConfigCommand(),
+		cmd_image.ImageCommand(),
+		cmd_import.ImportCommand(),
+		cmd_keypair.KeypairCommand(),
+		cmd_login.LoginCommand(),
+		cmd_shell.ShellCommand(),
+		cmd_template.TemplateCommand(),
+		cmd_vm.VMCommand(),
 	}
 	app.EnableBashCompletion = true
 

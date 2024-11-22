@@ -1,4 +1,4 @@
-package cmd
+package common
 
 import (
 	"testing"
@@ -55,7 +55,8 @@ runcmd:
 		},
 	}
 
-	result, err := MergeOptionsInUserData(userData, defaultCloudInitUserData, sshKey)
+	// TODO: update defaultCloudInitUserData
+	result, err := MergeOptionsInUserData(userData, "#cloud-config\npackages:\n  - qemu-guest-agent\nruncmd:\n  - [ systemctl, daemon-reload ]\n  - [ systemctl, enable, qemu-guest-agent.service ]\n  - [ systemctl, start, --no-block, qemu-guest-agent.service ]", sshKey)
 	if err != nil {
 		t.Errorf("Error merging options in user data: %v", err)
 	}

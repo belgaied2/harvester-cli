@@ -1,4 +1,4 @@
-package cmd
+package cmd_template
 
 import (
 	"context"
@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	cmd_image "github.com/belgaied2/harvester-cli/cmd/image"
+	cmd_vm "github.com/belgaied2/harvester-cli/cmd/vm"
+	"github.com/belgaied2/harvester-cli/common"
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
 	rcmd "github.com/rancher/cli/cmd"
@@ -68,7 +71,7 @@ func TemplateCommand() *cli.Command {
 		Usage:   "Manipulate VM templates",
 		Action:  templateList,
 		Flags: []cli.Flag{
-			&nsFlag,
+			&cmd_vm.NamespaceFlag,
 		},
 		Subcommands: cli.Commands{
 			&cli.Command{
@@ -79,7 +82,7 @@ func TemplateCommand() *cli.Command {
 				ArgsUsage:   "None",
 				Action:      templateList,
 				Flags: []cli.Flag{
-					&nsFlag,
+					&cmd_vm.NamespaceFlag,
 				},
 			},
 			&cli.Command{
@@ -90,7 +93,7 @@ func TemplateCommand() *cli.Command {
 				ArgsUsage:   "VM_TEMPLATE:VERSION",
 				Action:      templateShow,
 				Flags: []cli.Flag{
-					&nsFlag,
+					&cmd_vm.NamespaceFlag,
 				},
 			},
 		},
@@ -99,7 +102,7 @@ func TemplateCommand() *cli.Command {
 
 // templateList implements the subcommand `template list`
 func templateList(ctx *cli.Context) (err error) {
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return
@@ -115,7 +118,7 @@ func templateList(ctx *cli.Context) (err error) {
 		{"NAME", "Name"},
 		{"LATEST_VERSION", "Version"},
 	},
-		ctxv1)
+		cmd_image.Ctxv1)
 
 	defer writer.Close()
 
@@ -151,14 +154,14 @@ func templateShow(ctx *cli.Context) error {
 		return fmt.Errorf("the argument provide does not have the right format, please give a VM template with a version in the format <VM_TEMPLATE_NAME>:<VERSION>")
 	}
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
 	}
 
 	// Getting the template name and the version from the argument
-	expArray := SplitOnColon(vmTemplateArg)
+	expArray := common.SplitOnColon(vmTemplateArg)
 	vmTemplateName := expArray[0]
 	vmTemplateVersion, err := strconv.Atoi(expArray[1])
 
@@ -167,7 +170,7 @@ func templateShow(ctx *cli.Context) error {
 	}
 
 	vmTemplateNameWithNS := vmTemplateName
-	matchingVMTemplate, err := fetchTemplateVersionFromInt(ctx.String("namespace"), c, vmTemplateVersion, vmTemplateNameWithNS)
+	matchingVMTemplate, err := cmd_vm.FetchTemplateVersionFromInt(ctx.String("namespace"), c, vmTemplateVersion, vmTemplateNameWithNS)
 
 	if err != nil {
 		return fmt.Errorf("error during querying VM Template, %w", err)
@@ -267,7 +270,7 @@ func mapVolumeData(ctx *cli.Context, matchingVMTemplate *v1beta1.VirtualMachineT
 
 // getCloudInitDataFromSecret will query a secret to read Cloud Init Data to include in the VM Spec
 func getCloudInitDataFromSecret(ctx *cli.Context, secretName, namespace, dataType string) (data string, err error) {
-	c, err := GetKubeClient(ctx)
+	c, err := common.GetKubeClient(ctx)
 
 	if err != nil {
 		return

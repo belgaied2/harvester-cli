@@ -1,4 +1,4 @@
-package cmd
+package cmd_image
 
 import (
 	"bufio"
@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/belgaied2/harvester-cli/cmd/vm"
+	"github.com/belgaied2/harvester-cli/common"
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/rancher/cli/config"
@@ -61,6 +63,7 @@ const (
 
 // TemplateCommand defines the CLI command that lists VM templates in Harvester
 func ImageCommand() *cli.Command {
+	nsFlag := cmd_vm.NamespaceFlag
 	return &cli.Command{
 		Name:    "image",
 		Aliases: []string{"img"},
@@ -89,7 +92,7 @@ func ImageCommand() *cli.Command {
 				ArgsUsage:   "VM_IMAGE_DISPLAYNAME",
 				Action:      imageCreate,
 				Flags: []cli.Flag{
-					&nsFlag,
+					&cmd_vm.NamespaceFlag,
 					&cli.StringFlag{
 						Name:     "source",
 						Usage:    "Location from which the image will be put into Harvester, this should be either an HTTP(S) link or a path to a file that harvester will use to get the image",
@@ -112,7 +115,7 @@ func ImageCommand() *cli.Command {
 				ArgsUsage:   "",
 				Action:      imageCatalog,
 				Flags: []cli.Flag{
-					&nsFlag,
+					&cmd_vm.NamespaceFlag,
 					&cli.StringFlag{
 						Name:     "metadata-url",
 						Usage:    "Location from which to get the metadata JSON file",
@@ -127,7 +130,7 @@ func ImageCommand() *cli.Command {
 }
 
 var (
-	ctxv1 = cliv1.NewContext(
+	Ctxv1 = cliv1.NewContext(
 		&cliv1.App{
 			Name: "harvester",
 		},
@@ -137,7 +140,7 @@ var (
 )
 
 func imageList(ctx *cli.Context) (err error) {
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return
@@ -155,7 +158,7 @@ func imageList(ctx *cli.Context) (err error) {
 		{"SOURCE TYPE", "SourceType"},
 		{"URL", "Url"},
 	},
-		ctxv1)
+		Ctxv1)
 
 	defer writer.Close()
 
@@ -311,7 +314,7 @@ func createImageObjectInAPI(ctx *cli.Context, vmImageDisplayName string, sourceT
 		},
 	}
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return
@@ -345,7 +348,7 @@ func getHarvesterAPIFromConfig(ctx *cli.Context) (serverConfig *config.ServerCon
 
 	harvesterKubeAPIServerHost := u.Host
 
-	tokenMap, configMap, err := GetRancherTokenMap(ctx)
+	tokenMap, configMap, err := common.GetRancherTokenMap(ctx)
 
 	if err != nil {
 		return
@@ -393,7 +396,7 @@ func imageCatalog(ctx *cli.Context) (err error) {
 		{"NAME", "Name"},
 		{"NUMBER OF IMAGES", "NumberOfImages"},
 	},
-		ctxv1)
+		Ctxv1)
 
 	osChoiceMap := make(map[int64]string)
 	var i int64 = 0
@@ -414,7 +417,7 @@ func imageCatalog(ctx *cli.Context) (err error) {
 
 	fmt.Println("Insert a number to select the image OS: ")
 	reader := bufio.NewReader(os.Stdin)
-	selection, err := GetSelectionFromInput(reader, len(osChoiceMap))
+	selection, err := common.GetSelectionFromInput(reader, len(osChoiceMap))
 	if err != nil {
 		return err
 	}
@@ -429,7 +432,7 @@ func imageCatalog(ctx *cli.Context) (err error) {
 		{"VERSION", "Version"},
 		{"BUILD", "Build"},
 		{"URL", "Url"},
-	}, ctxv1)
+	}, Ctxv1)
 
 	imageChoiceMap := make(map[int64]string)
 
@@ -442,7 +445,7 @@ func imageCatalog(ctx *cli.Context) (err error) {
 	writer.Close()
 
 	fmt.Printf("\nInsert a number to select an image to download: \n")
-	selection, err = GetSelectionFromInput(reader, len(imageChoiceMap))
+	selection, err = common.GetSelectionFromInput(reader, len(imageChoiceMap))
 	if err != nil {
 		return err
 	}

@@ -1,9 +1,12 @@
-package cmd
+package cmd_keypair
 
 import (
 	"context"
 	"time"
 
+	cmd_image "github.com/belgaied2/harvester-cli/cmd/image"
+	cmd_vm "github.com/belgaied2/harvester-cli/cmd/vm"
+	"github.com/belgaied2/harvester-cli/common"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/urfave/cli/v2"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +26,7 @@ func KeypairCommand() *cli.Command {
 		Usage:   "Manipulate SSH Keypairs",
 		Action:  keypairList,
 		Flags: []cli.Flag{
-			&nsFlag,
+			&cmd_vm.NamespaceFlag,
 		},
 		Subcommands: cli.Commands{
 			&cli.Command{
@@ -34,7 +37,7 @@ func KeypairCommand() *cli.Command {
 				ArgsUsage:   "None",
 				Action:      keypairList,
 				Flags: []cli.Flag{
-					&nsFlag,
+					&cmd_vm.NamespaceFlag,
 				},
 			},
 		},
@@ -42,7 +45,7 @@ func KeypairCommand() *cli.Command {
 }
 
 func keypairList(ctx *cli.Context) (err error) {
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return
@@ -59,7 +62,7 @@ func keypairList(ctx *cli.Context) (err error) {
 		{"FINGERPRINT", "Fingerprint"},
 		{"CREATION TIMESTAMP", "CreationTimestamp"},
 	},
-		ctxv1)
+		cmd_image.Ctxv1)
 
 	defer writer.Close()
 

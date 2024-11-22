@@ -1,4 +1,4 @@
-package cmd
+package common
 
 import (
 	"bufio"
@@ -68,15 +68,15 @@ type RoleTemplateBinding struct {
 	Created string
 }
 
-func loadAndVerifyCert(path string) (string, error) {
+func LoadAndVerifyCert(path string) (string, error) {
 	caCert, err := ioutil.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
-	return verifyCert(caCert)
+	return VerifyCert(caCert)
 }
 
-func verifyCert(caCert []byte) (string, error) {
+func VerifyCert(caCert []byte) (string, error) {
 	// replace the escaped version of the line break
 	caCert = bytes.Replace(caCert, []byte(`\n`), []byte("\n"), -1)
 
@@ -97,7 +97,7 @@ func verifyCert(caCert []byte) (string, error) {
 	return string(caCert), nil
 }
 
-func loadConfig(ctx *cli.Context) (config.Config, error) {
+func LoadConfig(ctx *cli.Context) (config.Config, error) {
 	// path will always be set by the global flag default
 	path := ctx.String("config")
 	path = filepath.Join(path, cfgFile)
@@ -121,7 +121,7 @@ func loadConfig(ctx *cli.Context) (config.Config, error) {
 }
 
 func lookupConfig(ctx *cli.Context) (*config.ServerConfig, error) {
-	cf, err := loadConfig(ctx)
+	cf, err := LoadConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func SimpleFormat(values [][]string) (string, string) {
 	return headerBuffer.String(), valueBuffer.String()
 }
 
-func defaultAction(fn func(ctx *cli.Context) error) func(ctx *cli.Context) error {
+func DefaultAction(fn func(ctx *cli.Context) error) func(ctx *cli.Context) error {
 	return func(ctx *cli.Context) error {
 		if ctx.Bool("help") {
 			err := cli.ShowAppHelp(ctx)
@@ -314,8 +314,8 @@ func SplitOnColon(s string) []string {
 	return strings.Split(s, ":")
 }
 
-// parseClusterAndProjectID comes from upstream Rancher CLI code and makes it possible to parse the cluster and project id from the tuples that come from the Rancher API
-func parseClusterAndProjectID(id string) (string, string, error) {
+// ParseClusterAndProjectID comes from upstream Rancher CLI code and makes it possible to parse the cluster and project id from the tuples that come from the Rancher API
+func ParseClusterAndProjectID(id string) (string, string, error) {
 	// Validate id
 	// Examples:
 	// c-qmpbm:p-mm62v
@@ -329,9 +329,9 @@ func parseClusterAndProjectID(id string) (string, string, error) {
 }
 
 // getClusterNames maps cluster ID to name and defaults to ID if name is blank
-func getClusterNames(ctx *cli.Context, c *cliclient.MasterClient) (map[string]string, error) {
+func GetClusterNames(ctx *cli.Context, c *cliclient.MasterClient) (map[string]string, error) {
 	clusterNames := make(map[string]string)
-	clusterCollection, err := c.ManagementClient.Cluster.List(defaultListOpts(ctx))
+	clusterCollection, err := c.ManagementClient.Cluster.List(DefaultListOpts(ctx))
 	if err != nil {
 		return clusterNames, err
 	}
@@ -356,8 +356,8 @@ func baseListOpts() *ntypes.ListOpts {
 	}
 }
 
-// defaultListOpts comes from upstream Rancher CLI code, it implements a way to handle lists of resources
-func defaultListOpts(ctx *cli.Context) *ntypes.ListOpts {
+// DefaultListOpts comes from upstream Rancher CLI code, it implements a way to handle lists of resources
+func DefaultListOpts(ctx *cli.Context) *ntypes.ListOpts {
 	listOpts := baseListOpts()
 	if ctx != nil && !ctx.Bool("all") {
 		listOpts.Filters["removed_null"] = "1"
@@ -434,7 +434,7 @@ func GetRESTClientAndConfig(ctx *cli.Context) (clientConfig *rest.Config, err er
 }
 
 func GetRancherTokenMap(ctx *cli.Context) (tokenMap map[string]string, configMap map[string]*config.ServerConfig, err error) {
-	rancherConfig, err := loadConfig(ctx)
+	rancherConfig, err := LoadConfig(ctx)
 
 	if err != nil {
 		return

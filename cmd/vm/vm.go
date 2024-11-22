@@ -1,4 +1,4 @@
-package cmd
+package cmd_vm
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/belgaied2/harvester-cli/cmd/image"
+	"github.com/belgaied2/harvester-cli/common"
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
 	"github.com/harvester/harvester/pkg/util"
@@ -38,7 +40,7 @@ const (
 )
 
 var (
-	nsFlag = cli.StringFlag{
+	NamespaceFlag = cli.StringFlag{
 		Name:    "namespace, n",
 		Usage:   "Namespace of the VM",
 		EnvVars: []string{"HARVESTER_VM_NAMESPACE"},
@@ -64,7 +66,7 @@ func VMCommand() *cli.Command {
 		Name:    "virtualmachine",
 		Aliases: []string{"vm"},
 		Usage:   "Manage Virtual Machines on Harvester",
-		Action:  defaultAction(vmLs),
+		Action:  common.DefaultAction(vmLs),
 		Subcommands: []*cli.Command{
 			{
 				Name:        "list",
@@ -74,7 +76,7 @@ func VMCommand() *cli.Command {
 				ArgsUsage:   "None",
 				Action:      vmLs,
 				Flags: []cli.Flag{
-					&nsFlag,
+					&NamespaceFlag,
 				},
 			},
 			{
@@ -87,7 +89,7 @@ func VMCommand() *cli.Command {
 				Action:    vmDelete,
 				ArgsUsage: "[VM_NAME/VM_ID]",
 				Flags: []cli.Flag{
-					&nsFlag,
+					&NamespaceFlag,
 				},
 			},
 			{
@@ -99,7 +101,7 @@ func VMCommand() *cli.Command {
 				Action:    vmCreate,
 				ArgsUsage: "[VM_NAME]",
 				Flags: []cli.Flag{
-					&nsFlag,
+					&NamespaceFlag,
 					&cli.StringFlag{
 						Name:    "vm-description",
 						Usage:   "Optional description of your VM",
@@ -197,7 +199,7 @@ func VMCommand() *cli.Command {
 				Action:    vmStop,
 				ArgsUsage: "[VM_NAME]",
 				Flags: []cli.Flag{
-					&nsFlag,
+					&NamespaceFlag,
 				},
 			},
 			{
@@ -206,7 +208,7 @@ func VMCommand() *cli.Command {
 				Action:    vmStart,
 				ArgsUsage: "[VM_NAME]",
 				Flags: []cli.Flag{
-					&nsFlag,
+					&NamespaceFlag,
 				},
 			},
 			{
@@ -219,7 +221,7 @@ func VMCommand() *cli.Command {
 						Name:  "vm-name, name",
 						Usage: "Name of the VM to restart",
 					},
-					&nsFlag,
+					&NamespaceFlag,
 				},
 			},
 		},
@@ -229,7 +231,7 @@ func VMCommand() *cli.Command {
 // vmLs lists the VMs available in Harvester
 func vmLs(ctx *cli.Context) error {
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -260,7 +262,7 @@ func vmLs(ctx *cli.Context) error {
 		{"RAM", "Memory"},
 		{"IP Address", "IPAddress"},
 	},
-		ctxv1)
+		cmd_image.Ctxv1)
 
 	defer writer.Close()
 
@@ -299,7 +301,7 @@ func vmLs(ctx *cli.Context) error {
 
 // vmDelete deletes VMs which name is given in argument
 func vmDelete(ctx *cli.Context) error {
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -368,7 +370,7 @@ func vmDeleteWithPVC(vmExisting *VMv1.VirtualMachine, c *harvclient.Clientset, c
 
 // vmCreate implements the CLI *vm create* command, there are two options, either to create a VM from a Harvester VM template or from a VM image
 func vmCreate(ctx *cli.Context) error {
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 
 	if err != nil {
 		return err
@@ -388,7 +390,7 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 	logrus.Warnf("You are using a template flag, please be aware that:\nFlags: --disk-size, --cpus, --memory, --user-data-* and --network-data-* will override the template.\nAny other flag will be IGNORED!")
 
 	// checking template format
-	subCompTemplate := SplitOnColon(template)
+	subCompTemplate := common.SplitOnColon(template)
 
 	if len(subCompTemplate) > 2 {
 		return fmt.Errorf("given template flag does not have the format <template_name> or <template_name>:<version>")
@@ -435,7 +437,7 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 		}
 		logrus.Debugf("template version: %s\n", string(marshalledTemplateVersion))
 	} else {
-		templateVersion, err = fetchTemplateVersionFromInt(ctx.String("namespace"), c, version, templateName)
+		templateVersion, err = FetchTemplateVersionFromInt(ctx.String("namespace"), c, version, templateName)
 		if err != nil {
 			return err
 		}
@@ -480,8 +482,8 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 	return nil
 }
 
-// fetchTemplateVersionFromInt gets the Template with the right version given the context (containing template name) and the version as an integer
-func fetchTemplateVersionFromInt(namespace string, c *harvclient.Clientset, version int, templateName string) (*v1beta1.VirtualMachineTemplateVersion, error) {
+// FetchTemplateVersionFromInt gets the Template with the right version given the context (containing template name) and the version as an integer
+func FetchTemplateVersionFromInt(namespace string, c *harvclient.Clientset, version int, templateName string) (*v1beta1.VirtualMachineTemplateVersion, error) {
 
 	templateSelector := "template.harvesterhci.io/templateID=" + templateName
 
@@ -561,7 +563,7 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 
 		vmiLabels["harvesterhci.io/vmName"] = vmName
 		vmiLabels["harvesterhci.io/vmNamePrefix"] = vmNameBase
-		diskRandomID := RandomID()
+		diskRandomID := common.RandomID()
 		pvcName := vmName + "-disk-0-" + diskRandomID
 		pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("namespace") + "/" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
 
@@ -615,7 +617,7 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 				Labels: vmLabels,
 			},
 			Spec: VMv1.VirtualMachineSpec{
-				Running: NewTrue(),
+				Running: common.NewTrue(),
 
 				Template: vmTemplate,
 			},
@@ -669,7 +671,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 	//err = fmt.Errorf("no keypair could be defined")
 	//return
 	//}
-	cloudInitUserData, err := MergeOptionsInUserData(cloudInitCustomUserData, defaultCloudInitUserData, sshKey)
+	cloudInitUserData, err := common.MergeOptionsInUserData(cloudInitCustomUserData, defaultCloudInitUserData, sshKey)
 	if err != nil {
 		err = fmt.Errorf("error during merging cloud init user data: %w", err)
 		return
@@ -764,8 +766,8 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 				},
 				Resources: VMv1.ResourceRequirements{
 					Requests: v1.ResourceList{
-						"memory": HandleMemoryOverCommittment(overCommitSettingMap, ctx.String("memory")),
-						"cpu":    HandleCPUOverCommittment(overCommitSettingMap, int64(ctx.Int("cpus"))),
+						"memory": common.HandleMemoryOverCommittment(overCommitSettingMap, ctx.String("memory")),
+						"cpu":    common.HandleCPUOverCommittment(overCommitSettingMap, int64(ctx.Int("cpus"))),
 					},
 					Limits: v1.ResourceList{
 						"memory": resource.MustParse(ctx.String("memory")),
@@ -798,7 +800,7 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 // vmStart issues a power on for the virtual machine instances which names are given as argument to the start command.
 func vmStart(ctx *cli.Context) error {
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -874,7 +876,7 @@ func startVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm VMv1.VirtualMach
 // vmStop issues a power off for the virtual machine instances which name is given as argument.
 func vmStop(ctx *cli.Context) error {
 
-	c, err := GetHarvesterClient(ctx)
+	c, err := common.GetHarvesterClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -1003,7 +1005,7 @@ func setDefaultSSHKey(c *harvclient.Clientset, ctx *cli.Context) (sshKey *v1beta
 // and will create a new one called "ubuntu-std-network" if none is provided or no ConfigMap was found with the same name
 func getCloudInitData(ctx *cli.Context, scope string) (string, error) {
 	var cmName string
-	c, err := GetKubeClient(ctx)
+	c, err := common.GetKubeClient(ctx)
 
 	if err != nil {
 		return "", err
@@ -1088,7 +1090,7 @@ func enrichVMTemplate(c *harvclient.Clientset, ctx *cli.Context, vmTemplate *VMv
 		if vmTemplate.Spec.Domain.Resources.Requests == nil {
 			vmTemplate.Spec.Domain.Resources.Requests = v1.ResourceList{}
 		}
-		vmTemplate.Spec.Domain.Resources.Requests["cpu"] = HandleCPUOverCommittment(overCommitSettingMap, int64(ctx.Int("cpus")))
+		vmTemplate.Spec.Domain.Resources.Requests["cpu"] = common.HandleCPUOverCommittment(overCommitSettingMap, int64(ctx.Int("cpus")))
 	}
 
 	if ctx.IsSet("memory") {
@@ -1096,7 +1098,7 @@ func enrichVMTemplate(c *harvclient.Clientset, ctx *cli.Context, vmTemplate *VMv
 		if vmTemplate.Spec.Domain.Resources.Requests == nil {
 			vmTemplate.Spec.Domain.Resources.Requests = v1.ResourceList{}
 		}
-		vmTemplate.Spec.Domain.Resources.Requests["memory"] = HandleMemoryOverCommittment(overCommitSettingMap, ctx.String("memory"))
+		vmTemplate.Spec.Domain.Resources.Requests["memory"] = common.HandleMemoryOverCommittment(overCommitSettingMap, ctx.String("memory"))
 	}
 
 	for _, userDataType := range []string{"network", "user"} {

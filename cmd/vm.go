@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 
@@ -1043,7 +1043,7 @@ func getCloudInitData(ctx *cli.Context, scope string) (string, error) {
 	}
 
 	var cloudInitDataBytes []byte
-	if cloudInitDataBytes, err = ioutil.ReadFile(ctx.String(flagName + "-filepath")); err != nil {
+	if cloudInitDataBytes, err = os.ReadFile(ctx.String(flagName + "-filepath")); err != nil {
 		return "", fmt.Errorf("error during reading of cloud-init file: %s", err)
 	}
 	cloudInitDataString = string(cloudInitDataBytes)

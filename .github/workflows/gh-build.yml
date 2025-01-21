@@ -29,3 +29,4 @@ jobs:
         goversion: "https://go.dev/dl/go1.23.4.linux-amd64.tar.gz"
         binary_name: harvester
         ldflags: -X main.VERSION=${{ github.ref_name }}
+        multi_binaries: true

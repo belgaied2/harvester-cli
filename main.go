@@ -7,66 +7,57 @@ import (
 	"strings"
 
 	"github.com/belgaied2/harvester-cli/cmd"
+	"github.com/belgaied2/harvester-cli/constant"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
-var VERSION = "dev"
+type AppContext struct {
+	UserHomeDirectory string
+	AppObject         *cli.App
+}
 
 func main() {
-	if err := mainErr(); err != nil {
+	app := AppContext{
+		UserHomeDirectory: getUserHomeDirectory(),
+		AppObject:         cli.NewApp(),
+	}
+
+	setAppMetadata(app)
+	setAppFlags(app)
+	setAppCommands(app)
+
+	arguments, err := parseArgs(os.Args)
+	if err != nil {
+		logrus.Error(err)
+		os.Exit(1)
+	}
+
+	err = app.AppObject.Run(arguments)
+	if err != nil {
 		logrus.Fatal(err)
 	}
 }
 
-func mainErr() error {
-
+func getUserHomeDirectory() string {
 	userHome, err := os.UserHomeDir()
-
 	if err != nil {
 		logrus.Warn("Not able to determine home folder of current user!")
 	}
+	return userHome
+}
 
-	app := cli.NewApp()
-	app.Name = "harvester"
-	app.Usage = "Harvester CLI to easily manage infrastructure"
-	// app.Before = func(ctx *cli.Context) error {
-	// 	if ctx.GlobalBool("debug") {
-	// 		logrus.SetLevel(logrus.DebugLevel)
-	// 	}
-	// 	return nil
-	// }
-	app.Version = VERSION
-	app.Authors = append(app.Authors, &cli.Author{
-		Name:  "Mohamed Belgaied Hassine",
-		Email: "mohamed.belgaiedhassine@gmail.com"})
-	app.Flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "debug",
-			Usage: "Debug logging",
-		},
-		&cli.StringFlag{
-			Name:    "harvester-config, hconf",
-			Usage:   "Path to Harvester's config file",
-			EnvVars: []string{"HARVESTER_CONFIG"},
-			Value:   path.Join(userHome, ".harvester", "config"),
-		},
-		&cli.StringFlag{
-			Name:    "config, rconf",
-			Usage:   "Path to Rancher's config file",
-			EnvVars: []string{"RANCHER_CONFIG"},
-			Value:   path.Join(userHome, ".rancher"),
-		},
-		// cli.StringFlag{
-		// 	Name:   "loglevel",
-		// 	Usage:  "Defines the log level to be used, possible values are error, info, warn, debug and trace",
-		// 	EnvVar: "HARVESTER_LOG",
-		// 	Value:  "info",
-		// },
-	}
-	app.Commands = []*cli.Command{
+func setAppMetadata(app AppContext) {
+	app.AppObject.Name = constant.Name
+	app.AppObject.Usage = constant.Description
+	app.AppObject.Version = constant.Version
+	app.AppObject.Authors = constant.Authors
+	app.AppObject.EnableBashCompletion = true
+}
 
+func setAppCommands(app AppContext) {
+	app.AppObject.Commands = []*cli.Command{
 		cmd.LoginCommand(),
 		cmd.ConfigCommand(),
 		cmd.VMCommand(),
@@ -77,39 +68,69 @@ func mainErr() error {
 		cmd.ImportCommand(),
 		cmd.CompleteCommand(),
 	}
-	app.EnableBashCompletion = true
-
-	parsed, err := parseArgs(os.Args)
-	if err != nil {
-		logrus.Error(err)
-		os.Exit(1)
-	}
-
-	return app.Run(parsed)
 }
 
-var singleAlphaLetterRegxp = regexp.MustCompile("[a-zA-Z]")
+func setAppFlags(app AppContext) {
+	app.AppObject.Flags = []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "debug",
+			Usage: "Debug logging",
+		},
+		&cli.StringFlag{
+			Name:    "harvester-config, hconf",
+			Usage:   "Path to Harvester's config file",
+			EnvVars: []string{"HARVESTER_CONFIG"},
+			Value:   path.Join(app.UserHomeDirectory, ".harvester", "config"),
+		},
+		&cli.StringFlag{
+			Name:    "config, rconf",
+			Usage:   "Path to Rancher's config file",
+			EnvVars: []string{"RANCHER_CONFIG"},
+			Value:   path.Join(app.UserHomeDirectory, ".rancher"),
+		},
+	}
+}
 
 func parseArgs(args []string) ([]string, error) {
-	result := []string{}
+	var result []string
+
 	for _, arg := range args {
-		if strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") && len(arg) > 1 {
-			for i, c := range arg[1:] {
-				if string(c) == "=" {
-					if i < 1 {
-						return nil, errors.New("invalid input with '-' and '=' flag")
-					}
-					result[len(result)-1] = result[len(result)-1] + arg[i+1:]
-					break
-				} else if singleAlphaLetterRegxp.MatchString(string(c)) {
-					result = append(result, "-"+string(c))
-				} else {
-					return nil, errors.Errorf("invalid input %v in flag", string(c))
-				}
+		if isShortFlag(arg) {
+			parsed, err := parseShortFlag(arg)
+			if err != nil {
+				return nil, err
 			}
+			result = append(result, parsed...)
 		} else {
 			result = append(result, arg)
 		}
 	}
+
+	return result, nil
+}
+
+func isShortFlag(arg string) bool {
+	return strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") && len(arg) > 1
+}
+
+func parseShortFlag(flag string) ([]string, error) {
+	var result []string
+
+	for index, raw_char := range flag[1:] {
+		char := string(raw_char)
+
+		if char == "=" {
+			if index == 0 {
+				return nil, errors.New("invalid input: '-' cannot be directly followed by '='")
+			}
+			result[len(result)-1] += flag[index+2:]
+			break
+		} else if regexp.MustCompile("^[a-zA-Z]$").MatchString(char) {
+			result = append(result, "-"+char)
+		} else {
+			return nil, errors.New("invalid input: unexpected character in flag: " + char)
+		}
+	}
+
 	return result, nil
 }

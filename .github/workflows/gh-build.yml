@@ -30,4 +30,4 @@ jobs:
         binary_name: harvester
         ldflags: -X main.VERSION=${{ github.ref_name }}
         multi_binaries: true
-    - uses: asilbek99/action-cleanup@v1.0
+    - run: sudo rm -rf build-artifacts-*

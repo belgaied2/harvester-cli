@@ -20,6 +20,7 @@ jobs:
           - goarch: arm64
             goos: windows 
     steps:
+    - run: sudo rm -rf build-artifacts-*
     - uses: actions/checkout@v2
     - uses: wangyoucao577/go-release-action@v1.52
       with:
@@ -30,4 +31,3 @@ jobs:
         binary_name: harvester
         ldflags: -X main.VERSION=${{ github.ref_name }}
         multi_binaries: true
-    - run: sudo rm -rf build-artifacts-*

@@ -10,7 +10,6 @@ import (
 
 	"github.com/harvester/harvester/pkg/apis/harvesterhci.io/v1beta1"
 	harvclient "github.com/harvester/harvester/pkg/generated/clientset/versioned"
-	"github.com/harvester/harvester/pkg/util"
 	"github.com/minio/pkg/wildcard"
 	rcmd "github.com/rancher/cli/cmd"
 	"github.com/sirupsen/logrus"
@@ -35,6 +34,7 @@ const (
 	defaultCloudInitNetworkData  = "version: 2\nrenderer: networkd\nethernets:\n  enp1s0:\n    dhcp4: true"
 	defaultCloudInitCmPrefix     = "default-ubuntu-"
 	defaultOverCommitSettingName = "overcommit-config"
+	RemovedPVCsAnnotationKey     = "harvesterhci.io/removedPersistentVolumeClaims"
 )
 
 var (
@@ -350,7 +350,7 @@ func vmDeleteWithPVC(vmExisting *VMv1.VirtualMachine, c *harvclient.Clientset, c
 		}
 	}
 
-	vmCopy.Annotations[util.RemovedPVCsAnnotationKey] = strings.Join(removedPVCs, ",")
+	vmCopy.Annotations[RemovedPVCsAnnotationKey] = strings.Join(removedPVCs, ",")
 	_, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vmCopy, k8smetav1.UpdateOptions{})
 
 	if err != nil {

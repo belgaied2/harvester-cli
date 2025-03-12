@@ -64,7 +64,11 @@ func GetConfig(ctx *cli.Context) error {
 		Content: "",
 	}
 
-	ctxv1 := cliv1.NewContext(&cliv1.App{Name: "harvester"}, &flag.FlagSet{}, nil)
+	flags := flag.NewFlagSet("get-config", flag.ContinueOnError)
+	flags.String("config", "", "config content")
+	flags.String("path", "", "path to the file")
+
+	ctxv1 := cliv1.NewContext(&cliv1.App{Name: "harvester"}, flags, nil)
 	err = ctxv1.Set("config", ctx.String("config"))
 	if err != nil {
 		return fmt.Errorf("error setting config flag: %w", err)

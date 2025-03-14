@@ -64,8 +64,9 @@ func LoginCommand() *cli.Command {
 				Usage: "Skip verification of the CACerts presented by the Server",
 			},
 			&cli.StringFlag{
-				Name:  "harvester-config-path, path",
-				Usage: "Defines the folder in which the Harvester Kubeconfig will be created",
+				Name:    "harvester-config-path",
+				Aliases: []string{"path"},
+				Usage:   "Defines the folder in which the Harvester Kubeconfig will be created",
 			},
 			&cli.StringFlag{
 				Name:  "cluster",
@@ -172,7 +173,6 @@ func loginSetup(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
 	err = GetConfig(ctx)
 	if err != nil {
 		return err

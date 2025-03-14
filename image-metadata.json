@@ -15,9 +15,29 @@
       },
       {
         "version": "15.3",
-        "build": "Current",
+        "build": "current",
         "shortName": "OpenSUSE Leap JeOS 15.3",
         "url": "https://download.opensuse.org/download/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-15.3-OpenStack-Cloud-Current.qcow2"
+      }
+    ],
+    "leap15.4+": [
+      {
+        "version": "15.4",
+        "build": "current",
+        "shortName": "OpenSUSE Leap Minimal 15.4",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-Minimal-VM.x86_64-OpenStack-Cloud.qcow2"
+      },
+      {
+        "version": "15.5",
+        "build": "current",
+        "shortName": "OpenSUSE Leap Minimal 15.5",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.5/appliances/openSUSE-Leap-15.5-Minimal-VM.x86_64-Cloud.qcow2"
+      },
+      {
+        "version": "15.6",
+        "build": "current",
+        "shortName": "OpenSUSE Leap Minimal 15.6",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.6/appliances/openSUSE-Leap-15.6-Minimal-VM.x86_64-Cloud.qcow2"
       }
     ],
     "tumbleweed": [

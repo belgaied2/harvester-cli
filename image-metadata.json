@@ -15,21 +15,29 @@
       },
       {
         "version": "15.3",
-        "build": "Current",
+        "build": "current",
         "shortName": "OpenSUSE Leap JeOS 15.3",
         "url": "https://download.opensuse.org/download/distribution/leap/15.3/appliances/openSUSE-Leap-15.3-JeOS.x86_64-15.3-OpenStack-Cloud-Current.qcow2"
-      },
+      }
+    ],
+    "leap15.4+": [
       {
         "version": "15.4",
-        "build": "Build31.185",
-        "shortName": "OpenSUSE Leap JeOS 15.4",
-        "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Build31.185.qcow2"
+        "build": "current",
+        "shortName": "OpenSUSE Leap Minimal 15.4",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-Minimal-VM.x86_64-OpenStack-Cloud.qcow2"
       },
       {
-        "version": "15.4",
-        "build": "Current",
-        "shortName": "OpenSUSE Leap JeOS 15.4",
-        "url": "https://download.opensuse.org/download/distribution/leap/15.4/appliances/openSUSE-Leap-15.4-JeOS.x86_64-15.4-OpenStack-Cloud-Current.qcow2"
+        "version": "15.5",
+        "build": "current",
+        "shortName": "OpenSUSE Leap Minimal 15.5",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.5/appliances/openSUSE-Leap-15.5-Minimal-VM.x86_64-Cloud.qcow2"
+      },
+      {
+        "version": "15.6",
+        "build": "current",
+        "shortName": "OpenSUSE Leap Minimal 15.6",
+        "url": "https://download.opensuse.org/download/distribution/leap/15.6/appliances/openSUSE-Leap-15.6-Minimal-VM.x86_64-Cloud.qcow2"
       }
     ],
     "tumbleweed": [
@@ -58,37 +66,73 @@
       {
         "version": "8.7",
         "shortName": "Rocky Linux 8.7",
-        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221122.0.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221122.0.x86_64.qcow2",
         "build": "8.7-20221122.0"
       },
       {
         "version": "8.7",
         "shortName": "Rocky Linux 8.7",
-        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221128.0.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221128.0.x86_64.qcow2",
         "build": "8.7-20221128.0"
       },
       {
         "version": "8.7",
         "shortName": "Rocky Linux 8.7",
-        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221130.0.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20221130.0.x86_64.qcow2",
         "build": "8.7-20221130.0"
       },
       {
         "version": "8.7",
         "shortName": "Rocky Linux 8.7",
-        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20230215.0.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20230215.0.x86_64.qcow2",
         "build": "8.7-20230215.0"
       },
       {
         "version": "8.7",
         "shortName": "Rocky Linux 8.7",
-        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.7/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2",
         "build": "latest"
       },
       {
         "version": "8.7",
         "shortName": "Rocky Linux 8.7",
-        "url": "https://download.rockylinux.org/pub/rocky/8.7/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.7/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "8.8",
+        "shortName": "Rocky Linux 8.8",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.8/images/x86_64/Rocky-8-GenericCloud-Base-8.8-20230518.0.x86_64.qcow2",
+        "build": "8.8-20230518.0"
+      },
+      {
+        "version": "8.8",
+        "shortName": "Rocky Linux 8.8",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "8.8",
+        "shortName": "Rocky Linux 8.8",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "8.9",
+        "shortName": "Rocky Linux 8.9",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.9/images/x86_64/Rocky-8-GenericCloud-Base-8.9-20231119.0.x86_64.qcow2",
+        "build": "8.9-20231119.0"
+      },
+      {
+        "version": "8.9",
+        "shortName": "Rocky Linux 8.9",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.9/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "8.9",
+        "shortName": "Rocky Linux 8.9",
+        "url": "https://dl.rockylinux.org/vault/rocky/8.9/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2",
         "build": "latest"
       },
       {
@@ -112,31 +156,121 @@
       {
         "version": "9.1",
         "shortName": "Rocky Linux 9.1",
-        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20221123.0.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20221123.0.x86_64.qcow2",
         "build": "9.1-20221123.0"
       },
       {
         "version": "9.1",
         "shortName": "Rocky Linux 9.1",
-        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20221130.0.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20221130.0.x86_64.qcow2",
         "build": "9.1-20221130.0"
       },
       {
         "version": "9.1",
         "shortName": "Rocky Linux 9.1",
-        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20230215.0.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base-9.1-20230215.0.x86_64.qcow2",
         "build": "9.1-20230215.0"
       },
       {
         "version": "9.1",
         "shortName": "Rocky Linux 9.1",
-        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.1/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2",
         "build": "latest"
       },
       {
         "version": "9.1",
         "shortName": "Rocky Linux 9.1",
-        "url": "https://download.rockylinux.org/pub/rocky/9.1/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.1/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.2",
+        "shortName": "Rocky Linux 9.2",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.2/images/x86_64/Rocky-9-GenericCloud-Base-9.2-20230513.0.x86_64.qcow2",
+        "build": "9.2-20230513.0"
+      },
+      {
+        "version": "9.2",
+        "shortName": "Rocky Linux 9.2",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.2/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.2",
+        "shortName": "Rocky Linux 9.2",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.2/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.3",
+        "shortName": "Rocky Linux 9.3",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.3/images/x86_64/Rocky-9-GenericCloud-Base-9.3-20231113.0.x86_64.qcow2",
+        "build": "9.3-20231113.0"
+      },
+      {
+        "version": "9.3",
+        "shortName": "Rocky Linux 9.3",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.3/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.3",
+        "shortName": "Rocky Linux 9.3",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.3/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.4",
+        "shortName": "Rocky Linux 9.4",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.4/images/x86_64/Rocky-9-GenericCloud-Base-9.4-20240509.0.x86_64.qcow2",
+        "build": "9.4-20240509.0"
+      },
+      {
+        "version": "9.4",
+        "shortName": "Rocky Linux 9.4",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.4/images/x86_64/Rocky-9-GenericCloud-Base-9.4-20240523.0.x86_64.qcow2",
+        "build": "9.4-20240523.0"
+      },
+      {
+        "version": "9.4",
+        "shortName": "Rocky Linux 9.4",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.4/images/x86_64/Rocky-9-GenericCloud-Base-9.4-20240609.0.x86_64.qcow2",
+        "build": "9.4-20240609.0"
+      },
+      {
+        "version": "9.4",
+        "shortName": "Rocky Linux 9.4",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.4/images/x86_64/Rocky-9-GenericCloud-Base-9.4-20240609.1.x86_64.qcow2",
+        "build": "9.4-20240609.1"
+      },
+      {
+        "version": "9.4",
+        "shortName": "Rocky Linux 9.4",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.4/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.4",
+        "shortName": "Rocky Linux 9.4",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.4/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.5",
+        "shortName": "Rocky Linux 9.5",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.5/images/x86_64/Rocky-9-GenericCloud-Base-9.5-20241118.0.x86_64.qcow2",
+        "build": "9.5-20241118.0"
+      },
+      {
+        "version": "9.5",
+        "shortName": "Rocky Linux 9.5",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.5/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2",
+        "build": "latest"
+      },
+      {
+        "version": "9.5",
+        "shortName": "Rocky Linux 9.5",
+        "url": "https://dl.rockylinux.org/vault/rocky/9.5/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2",
         "build": "latest"
       }
     ],
@@ -160,9 +294,15 @@
         "build": "latest"
       },
       {
-        "version": "22.10",
-        "shortName": "Ubuntu kinetic 22.10",
-        "url": "https://cloud-images.ubuntu.com/minimal/releases/kinetic/release/ubuntu-22.10-minimal-cloudimg-amd64.img",
+        "version": "24.04",
+        "shortName": "Ubuntu noble 24.04",
+        "url": "https://cloud-images.ubuntu.com/minimal/releases/noble/release/ubuntu-24.04-minimal-cloudimg-amd64.img",
+        "build": "latest"
+      },
+      {
+        "version": "24.10",
+        "shortName": "Ubuntu oracular 24.10",
+        "url": "https://cloud-images.ubuntu.com/minimal/releases/oracular/release/ubuntu-24.10-minimal-cloudimg-amd64.img",
         "build": "latest"
       }
     ]

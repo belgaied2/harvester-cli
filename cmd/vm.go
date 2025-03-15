@@ -579,7 +579,12 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 		vmiLabels["harvesterhci.io/vmNamePrefix"] = vmNameBase
 		diskRandomID := RandomID()
 		pvcName := vmName + "-disk-0-" + diskRandomID
-		pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + ctx.String("namespace") + "/" + ctx.String("vm-image-id") + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
+		vmImageNS, vmImageID, err := getNamespaceAndName(ctx, ctx.String("vm-image-id"))
+		if err != nil {
+			return err
+		}
+
+		pvcAnnotation := "[{\"metadata\":{\"name\":\"" + pvcName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"" + vmImageNS + "/" + vmImageID + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + ctx.String("disk-size") + "\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"" + storageClassName + "\"}}]"
 
 		if vmTemplate == nil {
 

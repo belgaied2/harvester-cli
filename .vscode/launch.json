@@ -5,6 +5,7 @@
   "version": "0.2.0",
   "configurations": [
 
+
     {
       "name": "upload vm image",
       "type": "go",
@@ -79,6 +80,14 @@
       "mode": "debug",
       "program": "main.go",
       "args": ["vm", "create",  "--vm-image-id", "image-7jrrf", "-c", "4", "-m", "2Gi", "-d", "50Gi", "--net", "vlan1", "--user-data-file", "/home/mohamed/user-data.yaml" , "overcommit-test"]
+    },
+    {
+      "name": "login",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "main.go",
+      "args": ["login", "--token", "token-ff572:b9j9n6lgwwrzpf9llf98wsndgqvvljzpnzzwgfhb778qt5bv8fwvpc", "https://rancher-292-tf.team.suselearn.org"]
     }
   ]
 }

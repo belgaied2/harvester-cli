@@ -187,7 +187,7 @@ func VMCommand() *cli.Command {
 						Aliases: []string{"net"},
 						Usage:   "Network to which the VM should be belong",
 						EnvVars: []string{"HARVESTER_VM_NETWORK"},
-						Value:   "vlan1",
+						Value:   "",
 					},
 				},
 			},
@@ -407,8 +407,13 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 		return fmt.Errorf("version given in template flag %s is not an integer", subCompTemplate[1])
 	}
 
+	templateNS, templateName, err := getNamespaceAndName(ctx, templateName)
+	if err != nil {
+		return err
+	}
+
 	// checking if template exists
-	templateContent, err := c.HarvesterhciV1beta1().VirtualMachineTemplates(ctx.String("namespace")).Get(context.TODO(), templateName, k8smetav1.GetOptions{})
+	templateContent, err := c.HarvesterhciV1beta1().VirtualMachineTemplates(templateNS).Get(context.TODO(), templateName, k8smetav1.GetOptions{})
 
 	if err != nil {
 		return fmt.Errorf("template %s was not found on the Harvester Cluster", subCompTemplate[0])
@@ -417,9 +422,10 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 	// Picking the templateVersion
 	var templateVersion *v1beta1.VirtualMachineTemplateVersion
 	if version == 0 {
-		templateVersionString := strings.Split(templateContent.Spec.DefaultVersionID, "/")[1]
-		templateVersionNamespace := strings.Split(templateContent.Spec.DefaultVersionID, "/")[0]
-		logrus.Debugf("templateVersion found is :%s\n", templateContent.Spec.DefaultVersionID)
+		templateVersionNamespace, templateVersionString, err := getNamespaceAndName(ctx, templateContent.Spec.DefaultVersionID)
+		if err != nil {
+			return err
+		}
 
 		templateVersion, err = c.HarvesterhciV1beta1().VirtualMachineTemplateVersions(templateVersionNamespace).Get(context.TODO(), templateVersionString, k8smetav1.GetOptions{})
 		// templateVersion, err := c.HarvesterClient.HarvesterhciV1beta1().VirtualMachineTemplates(templateVersionNamespace).Get(context.TODO(), "ubuntu-template", k8smetav1.GetOptions{})
@@ -427,6 +433,7 @@ func vmCreateFromTemplate(ctx *cli.Context, c *harvclient.Clientset) error {
 		if err != nil {
 			return err
 		}
+		logrus.Debugf("templateVersion found is :%s\n", templateContent.Spec.DefaultVersionID)
 		templateVersion.ManagedFields = []k8smetav1.ManagedFieldsEntry{}
 		marshalledTemplateVersion, err := json.Marshal(templateVersion)
 
@@ -510,7 +517,11 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 	imageID := ctx.String("vm-image-id")
 	var vmImage *v1beta1.VirtualMachineImage
 	if imageID != "" {
-		vmImage, err = c.HarvesterhciV1beta1().VirtualMachineImages(ctx.String("namespace")).Get(context.TODO(), imageID, k8smetav1.GetOptions{})
+		vmImageNS, VMImageName, err := getNamespaceAndName(ctx, imageID)
+		if err != nil {
+			return err
+		}
+		vmImage, err = c.HarvesterhciV1beta1().VirtualMachineImages(vmImageNS).Get(context.TODO(), VMImageName, k8smetav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -533,8 +544,13 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 		return fmt.Errorf("VM count provided is 0, no VM will be created")
 	}
 
+	networkNamespace, networkName, err := getNamespaceAndName(ctx, ctx.String("network"))
+	if err != nil {
+		return err
+	}
+
 	// Checking if provided Network exists in Harvester
-	_, err = c.K8sCniCncfIoV1().NetworkAttachmentDefinitions(ctx.String("namespace")).Get(context.TODO(), ctx.String("network"), k8smetav1.GetOptions{})
+	_, err = c.K8sCniCncfIoV1().NetworkAttachmentDefinitions(networkNamespace).Get(context.TODO(), networkName, k8smetav1.GetOptions{})
 
 	if err != nil {
 		return fmt.Errorf("problem while verifying network existence; %w", err)
@@ -648,9 +664,13 @@ func buildVMTemplate(ctx *cli.Context, c *harvclient.Clientset,
 
 	var sshKey *v1beta1.KeyPair
 
-	keyName := ctx.String("ssh-keyname")
+	keyNS, keyName, err := getNamespaceAndName(ctx, ctx.String("ssh-keyname"))
+	if err != nil {
+		return nil, err
+	}
+
 	if keyName != "" {
-		sshKey, err1 = c.HarvesterhciV1beta1().KeyPairs(ctx.String("namespace")).Get(context.TODO(), keyName, k8smetav1.GetOptions{})
+		sshKey, err1 = c.HarvesterhciV1beta1().KeyPairs(keyNS).Get(context.TODO(), keyName, k8smetav1.GetOptions{})
 		if err1 != nil {
 			err = fmt.Errorf("error during getting keypair from Harvester: %w", err1)
 			return
@@ -1022,7 +1042,11 @@ func getCloudInitData(ctx *cli.Context, scope string) (string, error) {
 
 		var ciData *v1.ConfigMap
 		if cmName != "" {
-			ciData, err = c.CoreV1().ConfigMaps(ctx.String("namespace")).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
+			cmNS, cmName, err := getNamespaceAndName(ctx, cmName)
+			if err != nil {
+				return "", err
+			}
+			ciData, err = c.CoreV1().ConfigMaps(cmNS).Get(context.TODO(), cmName, k8smetav1.GetOptions{})
 
 			if err != nil {
 				return "", fmt.Errorf("%[1]v config map was not found, please specify another configmap or remove the %[1]v flag to use the default one for ubuntu", cmName)

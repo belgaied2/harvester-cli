@@ -271,8 +271,8 @@ func configureVMImport(ctx *cli.Context) error {
 		return fmt.Errorf("invalid credentials-secret format: %v, must be <namespace>/<secret-name>", ctx.String("credentials-secret"))
 	}
 
-	credentialsNS := credentialsSplit[0]
-	credentialsName := credentialsSplit[1]
+	credentialsNS , credentialsName, err := getNamespaceAndName() 
+	 
 	var resourceType string
 	var createVMSourceBody []byte
 	if ctx.String("source-cluster-type") == "vmware" {

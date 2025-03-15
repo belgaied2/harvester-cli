@@ -550,3 +550,16 @@ func MergeOptionsInUserData(userData string, defaultUserData string, sshKey *v1b
 	return finalUserData, nil
 
 }
+
+func getNamespaceAndName(ctx *cli.Context, resourceName string) (resourceNS string, resource string, err error) {
+	if strings.Contains(resourceName, "/") {
+		parts := strings.Split(resourceName, "/")
+		return parts[0], parts[1], nil
+	}
+
+	if ctx.String("namespace") != "" {
+		return ctx.String("namespace"), resourceName, nil
+	}
+
+	return "", "", errors.New("could not determine namespace from resource name or context")
+}

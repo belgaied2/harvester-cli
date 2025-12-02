@@ -884,7 +884,7 @@ func startVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) err
 // startVMbyRef updates a VM object to make it Running
 func startVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm VMv1.VirtualMachine) (err error) {
 
-	*vm.Spec.Running = true
+	*vm.Spec.RunStrategy = Always
 
 	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), &vm, k8smetav1.UpdateOptions{})
 
@@ -934,9 +934,9 @@ func stopVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) erro
 	return stopVMbyRef(c, ctx, vm)
 }
 
-// stopVMbyRef will stop a VM by updating Spec.Running field of the VM object
+// stopVMbyRef will stop a VM by updating Spec.RunStrategy field of the VM object
 func stopVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm *VMv1.VirtualMachine) error {
-	*vm.Spec.Running = false
+	*vm.Spec.RunStrategy = Halted
 
 	_, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
 	if err != nil {

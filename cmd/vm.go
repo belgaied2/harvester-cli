@@ -57,6 +57,32 @@ type VirtualMachineData struct {
 	Memory         string
 	IPAddress      string
 }
+// VirtualMachineRunStrategy is a label for the requested VirtualMachineInstance Running State at the current time.
+
+const (
+	// Placeholder. Not a valid RunStrategy.
+	RunStrategyUnknown VMv1.VirtualMachineRunStrategy = ""
+	// VMI should always be running.
+	RunStrategyAlways VMv1.VirtualMachineRunStrategy = "Always"
+	// VMI should never be running.
+	RunStrategyHalted VMv1.VirtualMachineRunStrategy = "Halted"
+	// VMI can be started/stopped using API endpoints.
+	RunStrategyManual VMv1.VirtualMachineRunStrategy = "Manual"
+	// VMI will initially be running--and restarted if a failure occurs.
+	// It will not be restarted upon successful completion.
+	RunStrategyRerunOnFailure VMv1.VirtualMachineRunStrategy = "RerunOnFailure"
+	// VMI will run once and not be restarted upon completion regardless
+	// if the completion is of phase Failure or Success
+	RunStrategyOnce VMv1.VirtualMachineRunStrategy = "Once"
+	// Receiver pod will be created waiting for an incoming migration. Switch after to expected
+	// RunStrategy.
+	RunStrategyWaitAsReceiver VMv1.VirtualMachineRunStrategy = "WaitAsReceiver"
+)
+
+func NewRS() *VMv1.VirtualMachineRunStrategy {
+	rs := RunStrategyAlways
+	return &rs
+}
 
 // VMCommand defines the CLI command that manages VMs
 func VMCommand() *cli.Command {
@@ -509,6 +535,7 @@ func fetchTemplateVersionFromInt(namespace string, c *harvclient.Clientset, vers
 	return nil, fmt.Errorf("no template with the same version found")
 }
 
+
 // vmCreateFromImage creates a VM from a VM Image using the CLI command context to get information
 func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VMv1.VirtualMachineInstanceTemplateSpec) error {
 
@@ -636,7 +663,7 @@ func vmCreateFromImage(ctx *cli.Context, c *harvclient.Clientset, vmTemplate *VM
 				Labels: vmLabels,
 			},
 			Spec: VMv1.VirtualMachineSpec{
-				Running: NewTrue(),
+				RunStrategy: NewRS(),
 
 				Template: vmTemplate,
 			},
@@ -884,7 +911,7 @@ func startVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) err
 // startVMbyRef updates a VM object to make it Running
 func startVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm VMv1.VirtualMachine) (err error) {
 
-	*vm.Spec.RunStrategy = Always
+	*vm.Spec.RunStrategy = "Always"
 
 	_, err = c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), &vm, k8smetav1.UpdateOptions{})
 
@@ -936,7 +963,7 @@ func stopVMbyName(c *harvclient.Clientset, ctx *cli.Context, vmName string) erro
 
 // stopVMbyRef will stop a VM by updating Spec.RunStrategy field of the VM object
 func stopVMbyRef(c *harvclient.Clientset, ctx *cli.Context, vm *VMv1.VirtualMachine) error {
-	*vm.Spec.RunStrategy = Halted
+	*vm.Spec.RunStrategy = "Halted"
 
 	_, err := c.KubevirtV1().VirtualMachines(ctx.String("namespace")).Update(context.TODO(), vm, k8smetav1.UpdateOptions{})
 	if err != nil {
